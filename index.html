@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Plataforma de delivery completa para restaurantes, hamburguerias e lanchonetes. Cardápio digital próprio sem comissão, rastreamento de pedidos em tempo real e painel de gestão. Experimente grátis." />
+  <meta name="theme-color" content="#0a0f1e" />
+  <meta property="og:title" content="Delivery sem comissão — Sua própria loja digital" />
+  <meta property="og:description" content="Cardápio digital, pedidos em tempo real e gestão completa. Sem taxas abusivas, sem depender de terceiros. Experimente gratuitamente." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="pt_BR" />
+  <title>Delivery sem comissão — Sua própria loja digital</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%B5%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+    <div class="orb orb-c"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <header class="nav" id="nav">
+    <div class="container nav-inner">
+      <a href="#inicio" class="brand" aria-label="Solução Delivery — início">
+        <span class="brand-mark">&#x1F6D2;</span>
+        <span class="brand-name">Solução<strong>Delivery</strong></span>
+      </a>
+
+      <nav class="nav-links" id="navLinks" aria-label="Navegação principal">
+        <a href="#automacao">Automação</a>
+        <a href="#problemas">Problemas</a>
+        <a href="#solucoes">Soluções</a>
+        <a href="#comparativo">Comparativo</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <button type="button" class="nav-cta btn btn-primary btn-sm" data-open-lead>Experimentar grátis</button>
+
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="navLinks">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="inicio">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-content reveal">
+          <div class="hero-badge">
+            <span class="pulse-dot"></span>
+            Plataforma para quem faz delivery
+          </div>
+
+          <h1>Seu delivery <span class="grad-text">próprio</span>, sem comissão e com controle total</h1>
+
+          <p class="hero-sub">
+            Cardápio digital no seu nome, pedidos em tempo real e um painel completo de gestão.
+            Você deixa de pagar taxas abusivas e passa a mandar nos seus dados, preços e clientes.
+          </p>
+
+          <div class="hero-actions">
+            <button type="button" class="btn btn-primary btn-lg" data-open-lead>
+              Experimentar gratuitamente
+              <span class="btn-arrow" aria-hidden="true">&#8594;</span>
+            </button>
+            <a href="#solucoes" class="btn btn-ghost btn-lg">Ver soluções</a>
+          </div>
+
+          <ul class="hero-trust">
+            <li>
+              <span class="trust-num" data-count="0">0</span><span class="trust-unit">%</span>
+              <span class="trust-label">comissão por pedido</span>
+            </li>
+            <li>
+              <span class="trust-num" data-count="2">0</span>
+              <span class="trust-label">min para você no ar</span>
+            </li>
+            <li>
+              <span class="trust-num" data-count="1">0</span><span class="trust-unit">&#215;</span>
+              <span class="trust-label">dono dos seus dados</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="hero-visual reveal" data-reveal-delay="150">
+          <div class="phone" aria-hidden="true">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="phone-status">
+                <span>9:41</span>
+                <span>&#x1F4F6; &#x1F512;</span>
+              </div>
+              <div class="phone-brand">
+                <span class="phone-logo">&#x1F6D2;</span>
+                <div>
+                  <strong>Burger House</strong>
+                  <small>Aberto agora</small>
+                </div>
+                <span class="phone-open">&#9679;</span>
+              </div>
+              <div class="phone-search">
+                <span>&#128269;</span><span>Buscar no cardápio...</span>
+              </div>
+              <div class="phone-cats">
+                <span class="chip active">Lanches</span>
+                <span class="chip">Bebidas</span>
+                <span class="chip">Porções</span>
+                <span class="chip">Doces</span>
+              </div>
+              <div class="phone-products">
+                <div class="phone-card">
+                  <span class="p-img">&#x1F354;</span>
+                  <span class="p-info"><strong>Smash Duplo</strong><small>Pão, carne, queijo...</small></span>
+                  <span class="p-price">R$ 28,90</span>
+                </div>
+                <div class="phone-card">
+                  <span class="p-img">&#x1F35F;</span>
+                  <span class="p-info"><strong>Batata Cheddar</strong><small>Porção 300g</small></span>
+                  <span class="p-price">R$ 19,90</span>
+                </div>
+                <div class="phone-card">
+                  <span class="p-img">&#x1F9C8;</span>
+                  <span class="p-info"><strong>Combo Família</strong><small>2 burgers + fritas</small></span>
+                  <span class="p-price">R$ 49,90</span>
+                </div>
+              </div>
+              <div class="phone-cta">Adicionar ao carrinho</div>
+            </div>
+            <div class="phone-glow"></div>
+          </div>
+          <div class="float-card float-card-a reveal" data-reveal-delay="350">
+            <span class="float-icon">&#128274;</span>
+            <div><strong>Novo pedido</strong><small>#1042 — R$ 49,90</small></div>
+          </div>
+          <div class="float-card float-card-b reveal" data-reveal-delay="500">
+            <span class="float-icon">&#128176;</span>
+            <div><strong>0% comissão</strong><small>Você fica com tudo</small></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-scroll" aria-hidden="true"><span></span></div>
+    </section>
+
+    <section class="section section-alt" id="automacao">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Automação</span>
+          <h2>Chega de perder tempo anotando pedidos <span class="grad-text">à mão!</span></h2>
+          <p>Atendimento mais rápido e organizado — do primeiro “oi” no WhatsApp ao pedido impresso na cozinha.</p>
+        </div>
+
+        <div class="auto-grid">
+          <ul class="auto-checklist reveal">
+            <li>O cliente chama no WhatsApp e recebe automaticamente o link do seu cardápio digital</li>
+            <li>Escolhe os produtos, informa endereço e forma de pagamento montando o pedido em poucos toques</li>
+            <li>A taxa de entrega é calculada automaticamente pelo endereço</li>
+            <li>O pedido chega completo no seu computador ou celular</li>
+            <li>Ao confirmar, a impressão do pedido é disparada automaticamente</li>
+            <li>O cliente acompanha a mudança de status no Cardápio Digital</li>
+            <li>Na próxima visita, o cardápio pergunta se deseja repetir o último pedido — sem preencher tudo novamente</li>
+            <li>Delivery próprio, sem comissão de marketplace</li>
+          </ul>
+
+          <div class="chat-mockup reveal" data-reveal-delay="150" role="img" aria-label="Exemplo de conversa automática: cliente chama no WhatsApp, recebe o link do cardápio, o pedido é confirmado com frete calculado e o status muda para saiu para entrega">
+            <div class="chat-header" aria-hidden="true">
+              <span class="chat-avatar">&#x1F354;</span>
+              <div class="chat-title">
+                <strong>Burger House</strong>
+                <small>online</small>
+              </div>
+              <span class="chat-badge">WhatsApp</span>
+            </div>
+
+            <div class="chat-body" aria-hidden="true">
+              <div class="chat-bubble out">
+                Oi! Quero fazer um pedido &#128242;
+                <span class="chat-time">19:02</span>
+              </div>
+              <div class="chat-bubble in">
+                Olá! &#128075; Monte seu pedido no nosso cardápio digital:
+                <a href="#automacao" tabindex="-1" onclick="return false;">fabin.delivery/burgerhouse</a>
+                <span class="chat-time">19:02 &#10003;&#10003;</span>
+              </div>
+              <div class="chat-bubble out">
+                Pedido feito! Smash Duplo + Batata Cheddar + refri
+                <span class="chat-time">19:08</span>
+              </div>
+              <div class="chat-bubble in chat-confirm">
+                <strong>Pedido #1042 confirmado &#9989;</strong>
+                <small>Entrega: R$ 6,90 (calculada pelo CEP) &#183; Total: R$ 55,70</small>
+                <small>Previsão: 30–40 min &#183; Impressão enviada para a cozinha &#128424;</small>
+                <span class="chat-time">19:09</span>
+              </div>
+              <div class="chat-status">&#128295; Em produção</div>
+              <div class="chat-status chat-status-go">&#128666; Saiu para entrega</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="auto-footer reveal">
+          <p>Menos mensagens para responder, menos erros nos pedidos e muito mais agilidade.</p>
+          <button type="button" class="btn btn-primary btn-lg" data-open-lead>
+            &#128640; Automatize os pedidos do seu delivery
+            <span class="btn-arrow" aria-hidden="true">&#8594;</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="problemas">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">O problema</span>
+          <h2>Depender de plataformas e WhatsApp <span class="grad-text">sai caro</span></h2>
+          <p>Todo dia você perde dinheiro e clientes — e às vezes nem percebe.</p>
+        </div>
+
+        <div class="problems-grid">
+          <article class="card problem-card reveal">
+            <span class="card-icon">&#128200;</span>
+            <h3>Comissões que comem seu lucro</h3>
+            <p>Cada pedido nas grandes plataformas custa 12% a 30% do valor. Em um mês de 500 pedidos, é dinheiro que você dá de graça.</p>
+          </article>
+          <article class="card problem-card reveal" data-reveal-delay="80">
+            <span class="card-icon">&#128172;</span>
+            <h3>Pedidos perdidos no WhatsApp</h3>
+            <p>Cardápio no papel, preços desatualizados, pedidos confundidos e clientes esperando resposta às 23h. Caos todo dia.</p>
+          </article>
+          <article class="card problem-card reveal" data-reveal-delay="160">
+            <span class="card-icon">&#128240;</span>
+            <h3>Sem rastreamento de pedido</h3>
+            <p>O cliente não sabe se o pedido saiu ou chegou. Liga dezenas de vezes, cancela por impaciência e deixa avaliação negativa.</p>
+          </article>
+          <article class="card problem-card reveal" data-reveal-delay="240">
+            <span class="card-icon">&#128273;</span>
+            <h3>Seus clientes não são seus</h3>
+            <p>Você não tem os dados de quem compra. O app é deles, os dados são deles, o histórico é deles. Você apenas cozinha.</p>
+          </article>
+          <article class="card problem-card reveal" data-reveal-delay="320">
+            <span class="card-icon">&#128421;&#65039;</span>
+            <h3>Gestão no escuro</h3>
+            <p>Sem painel, sem relatório: você não sabe o que vendeu hoje, o que atrasou ou qual horário concentra mais pedidos.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="solucoes">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">A solução</span>
+          <h2>Tudo o que o seu delivery precisa, <span class="grad-text">num só lugar</span></h2>
+          <p>Uma plataforma completa — do cardápio digital ao painel operacional.</p>
+        </div>
+
+        <div class="features-grid">
+          <article class="card feature-card reveal">
+            <span class="card-icon">&#128722;</span>
+            <h3>Cardápio digital próprio</h3>
+            <p>Seu cardápio online com o nome, logo e identidade da sua marca. Atualize preços e produtos na hora, sem precisar de ninguém.</p>
+          </article>
+          <article class="card feature-card reveal" data-reveal-delay="80">
+            <span class="card-icon">&#128674;</span>
+            <h3>Rastreamento em tempo real</h3>
+            <p>O cliente acompanha o status do pedido pelo celular e você acompanha tudo no painel. Menos ligações, mais confiança.</p>
+          </article>
+          <article class="card feature-card reveal" data-reveal-delay="160">
+            <span class="card-icon">&#128202;</span>
+            <h3>Painel de gestão completo</h3>
+            <p>Pedidos ao vivo, alertas de atraso, dashboard de vendas e exportação do cardápio. Você enxerga a operação inteira.</p>
+          </article>
+          <article class="card feature-card reveal" data-reveal-delay="240">
+            <span class="card-icon">&#128205;</span>
+            <h3>Cotação de frete por CEP</h3>
+            <p>Frete calculado automaticamente pelo endereço e CEP do cliente. Chega de negociar entrega no olho.</p>
+          </article>
+          <article class="card feature-card reveal" data-reveal-delay="400">
+            <span class="card-icon">&#128274;</span>
+            <h3>Seus dados, seu controle</h3>
+            <p>Histórico e informações dos seus clientes são seus. Sem comissão, sem taxa escondida, sem dono do seu negócio.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="comparativo">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Comparativo</span>
+          <h2>Por que empresas escolhem <span class="grad-text">sair das plataformas</span></h2>
+          <p>Veja a diferença de ter o seu canal próprio.</p>
+        </div>
+
+        <div class="compare reveal">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th class="compare-void" aria-hidden="true"></th>
+                <th class="compare-us">Nossa plataforma</th>
+                <th class="compare-them">Plataformas tradicionais</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Comissão por pedido</th>
+                <td><span class="ok">0%</span></td>
+                <td><span class="bad">12% a 30%</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Identidade visual</th>
+                <td><span class="ok">Sua marca</span></td>
+                <td><span class="bad">Marca deles</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Dados dos clientes</th>
+                <td><span class="ok">Seus</span></td>
+                <td><span class="bad">Deles</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Pedidos em tempo real</th>
+                <td><span class="ok">Sim</span></td>
+                <td><span class="bad">Parcial</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Frete calculado por CEP</th>
+                <td><span class="ok">Sim</span></td>
+                <td><span class="bad">Nem sempre</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Preço do seu cardápio</th>
+                <td><span class="ok">Você define</span></td>
+                <td><span class="bad">Eles impõem</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="compare-cta reveal">
+          <p>Comissão zero, controle total e o seu nome em destaque.</p>
+          <button type="button" class="btn btn-primary btn-lg" data-open-lead>
+            Quero meu delivery próprio
+            <span class="btn-arrow" aria-hidden="true">&#8594;</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="como-funciona">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Simples assim</span>
+          <h2>Do cadastro ao primeiro pedido em <span class="grad-text">3 passos</span></h2>
+          <p>Você não precisa de equipe técnica nem conhecimento de programação.</p>
+        </div>
+
+        <div class="steps">
+          <article class="step reveal">
+            <span class="step-num">01</span>
+            <h3>Crie sua conta</h3>
+            <p>Cadastre-se gratuitamente com nome, e-mail e telefone. Leva menos de 2 minutos.</p>
+          </article>
+          <article class="step reveal" data-reveal-delay="120">
+            <span class="step-num">02</span>
+            <h3>Monte seu cardápio</h3>
+            <p>Adicione categorias, produtos, fotos e preços pelo painel. Ajuste quando quiser, sem limite.</p>
+          </article>
+          <article class="step reveal" data-reveal-delay="240">
+            <span class="step-num">03</span>
+            <h3>Receba pedidos</h3>
+            <p>Seu cardápio digital entra no ar e os pedidos chegam em tempo real. Você acompanha tudo do painel.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="tudo-incluso">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Tudo incluso</span>
+          <h2>Tudo isso faz parte do seu <span class="grad-text">delivery</span></h2>
+          <p>Pedido confirmado em menos de 1 minuto, sem módulo extra e sem taxa escondida: tudo liberado desde o primeiro dia.</p>
+        </div>
+
+        <ul class="incluso-grid reveal">
+          <li class="incluso-item">
+            <span class="incluso-check" aria-hidden="true">&#10003;</span>
+            <div class="incluso-text">
+              <strong>Cardápio Digital</strong>
+              <small>Com a sua marca, fotos e preços que você atualiza na hora.</small>
+            </div>
+          </li>
+          <li class="incluso-item">
+            <span class="incluso-check" aria-hidden="true">&#10003;</span>
+            <div class="incluso-text">
+              <strong>Gestão de Pedidos em tempo real</strong>
+              <small>Cada pedido cai no painel na hora, já organizado por status.</small>
+            </div>
+          </li>
+          <li class="incluso-item">
+            <span class="incluso-check" aria-hidden="true">&#10003;</span>
+            <div class="incluso-text">
+              <strong>Impressão Automática</strong>
+              <small>A comanda chega na impressora da cozinha sem você tocar em nada.</small>
+            </div>
+          </li>
+          <li class="incluso-item">
+            <span class="incluso-check" aria-hidden="true">&#10003;</span>
+            <div class="incluso-text">
+              <strong>Pedidos diretos no WhatsApp e Painel de Acompanhamento</strong>
+              <small>Contato direto entre você e o cliente, sem app no meio.</small>
+            </div>
+          </li>
+          <li class="incluso-item">
+            <span class="incluso-check" aria-hidden="true">&#10003;</span>
+            <div class="incluso-text">
+              <strong>Relatório de Vendas</strong>
+              <small>O que vendeu, quando vendeu e quanto faturou — sem planilha.</small>
+            </div>
+          </li>
+        </ul>
+
+        <div class="incluso-strip reveal">
+          <span>&#128176; Zero comissão por venda</span>
+          <span>&#128274; Seus clientes e seus dados são seus</span>
+          <span>&#9889;&#65039; Cardápio no ar em minutos</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="container container-narrow">
+        <div class="section-head reveal">
+          <span class="eyebrow">Dúvidas frequentes</span>
+          <h2>Perguntas <span class="grad-text">frequentes</span></h2>
+        </div>
+
+        <div class="faq reveal">
+          <details class="faq-item">
+            <summary>Preciso saber programar para usar a plataforma?</summary>
+            <p>Não. Todo o processo é visual: você cadastra produtos, preços e fotos pelo painel. O cardápio digital e a loja entram no ar automaticamente.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Realmente não pago comissão por pedido?</summary>
+            <p>Correto. O pedido entra direto no seu painel, sem taxa por venda. Você paga apenas pelo plano, sem surpresas no fim do mês.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Posso manter minhas lojas no iFood/WhatsApp em paralelo?</summary>
+            <p>Pode. Muitas empresas usam a plataforma como canal principal e mantêm os outros como complementares. O cardápio é totalmente seu.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Como meu cliente acompanha o pedido?</summary>
+            <p>Pelo próprio cardápio digital: o status é atualizado em tempo real e o cliente vê cada etapa até a entrega. Sem ligar para a loja.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta-final">
+      <div class="container">
+        <div class="cta-box reveal">
+          <span class="cta-emoji" aria-hidden="true">&#127881;</span>
+          <h2>Comece grátis hoje</h2>
+          <p>Monte seu cardápio digital, receba seus primeiros pedidos e veja seu lucro crescer. Sem cartão de crédito, sem compromisso.</p>
+          <button type="button" class="btn btn-primary btn-xl" data-open-lead>
+            Experimentar gratuitamente
+            <span class="btn-arrow" aria-hidden="true">&#8594;</span>
+          </button>
+          <small>Cadastro em 2 minutos &#183; Suporte próximo de você</small>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <a href="#inicio" class="brand">
+          <span class="brand-mark">&#x1F6D2;</span>
+          <span class="brand-name">Solução<strong>Delivery</strong></span>
+        </a>
+        <p>Plataforma de delivery para restaurantes, hamburguerias e lanchonetes que querem mandar no próprio negócio.</p>
+      </div>
+      <nav class="footer-links" aria-label="Links do rodapé">
+        <a href="#automacao">Automação</a>
+        <a href="#problemas">Problemas</a>
+        <a href="#solucoes">Soluções</a>
+        <a href="#comparativo">Comparativo</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <button type="button" class="btn btn-primary btn-sm" data-open-lead>Experimentar grátis</button>
+    </div>
+    <div class="container footer-bottom">
+      <span>&#169; <span id="year"></span> Solução Delivery — Todos os direitos reservados.</span>
+    </div>
+  </footer>
+
+  <div class="modal" id="leadModal" role="dialog" aria-modal="true" aria-labelledby="leadTitle" hidden>
+    <div class="modal-backdrop" data-close-lead></div>
+    <div class="modal-card">
+      <button type="button" class="modal-close" data-close-lead aria-label="Fechar">&times;</button>
+
+      <div class="modal-view" id="leadFormView">
+        <span class="modal-emoji" aria-hidden="true">&#127881;</span>
+        <h2 id="leadTitle">Comece grátis agora</h2>
+        <p class="modal-sub">Preencha seus dados e nossa equipe entra em contato para ativar sua loja digital.</p>
+
+        <form id="leadForm" novalidate>
+          <div class="field">
+            <label for="leadNome">Nome</label>
+            <input type="text" id="leadNome" name="nome" autocomplete="name" placeholder="Seu nome completo" required />
+            <span class="field-error" data-error-for="leadNome"></span>
+          </div>
+
+          <div class="field">
+            <label for="leadTelefone">Telefone / WhatsApp</label>
+            <input type="tel" id="leadTelefone" name="telefone" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999" required />
+            <span class="field-error" data-error-for="leadTelefone"></span>
+          </div>
+
+          <div class="field">
+            <label for="leadEmail">E-mail</label>
+            <input type="email" id="leadEmail" name="email" autocomplete="email" placeholder="voce@sualoja.com.br" required />
+            <span class="field-error" data-error-for="leadEmail"></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg btn-block">
+            Quero experimentar grátis
+            <span class="btn-arrow" aria-hidden="true">&#8594;</span>
+          </button>
+
+          <p class="modal-note">Sem cartão de crédito &#183; Sem compromisso &#183; Seus dados estão seguros com a gente.</p>
+        </form>
+      </div>
+
+      <div class="modal-view" id="leadSuccessView" hidden>
+        <span class="modal-emoji modal-emoji-success" aria-hidden="true">&#9989;</span>
+        <h2>Recebemos seu interesse!</h2>
+        <p class="modal-sub">Obrigado, <strong id="successName"></strong>. Em breve nossa equipe vai entrar em contato pelo <strong id="successContact"></strong> para ativar sua loja gratuita.</p>
+        <button type="button" class="btn btn-primary btn-lg btn-block" data-close-lead>Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/script.js"></script>
+</body>
+</html>

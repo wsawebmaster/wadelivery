@@ -1,0 +1,10 @@
+{
+  "name": "delivery-platform-landing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Landing page de divulgação da plataforma de delivery",
+  "scripts": {
+    "start": "npx --yes --ignore-existing serve . -l tcp://0.0.0.0:8082",
+    "dev": "npx --yes --ignore-existing serve . -l tcp://0.0.0.0:8082"
+  }
+}
