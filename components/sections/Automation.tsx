@@ -18,7 +18,7 @@ export function Automation({ onOpenLead }: AutomationProps) {
         </Reveal>
 
         <div className="auto-grid">
-          <ul className="auto-checklist reveal">
+          <ul className="auto-checklist">
             <li>O cliente chama no WhatsApp e recebe automaticamente o link do seu cardápio digital</li>
             <li>Escolhe os produtos, informa endereço e forma de pagamento montando o pedido em poucos toques</li>
             <li>A taxa de entrega é calculada automaticamente pelo endereço</li>

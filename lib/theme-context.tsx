@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 
 type Theme = 'dark' | 'light'
 
@@ -25,39 +25,54 @@ function getSystemTheme(): Theme {
 
 function getStoredTheme(): Theme | null {
   if (typeof window === 'undefined') return null
-  const stored = localStorage.getItem('theme')
+  const stored = localStorage.getItem('wadelivery-theme')
   if (stored === 'light' || stored === 'dark') return stored
   return null
 }
 
+function getClientTheme(): Theme {
+  return getStoredTheme() || getSystemTheme()
+}
+
+let onThemeChange: (() => void) | null = null
+
+function subscribe(callback: () => void) {
+  onThemeChange = callback
+  return () => { onThemeChange = null }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark')
+  const theme = useSyncExternalStore(subscribe, getClientTheme, () => 'dark' as Theme)
 
   useEffect(() => {
-    const stored = getStoredTheme()
-    const initial = stored || getSystemTheme()
-    setTheme(initial)
-    document.documentElement.setAttribute('data-theme', initial)
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
+  useEffect(() => {
     const mql = window.matchMedia('(prefers-color-scheme: light)')
-    function onSystemChange(e: MediaQueryListEvent) {
-      if (!localStorage.getItem('theme')) {
-        const next = e.matches ? 'light' : 'dark'
-        setTheme(next)
-        document.documentElement.setAttribute('data-theme', next)
+    function onSystemChange() {
+      if (!localStorage.getItem('wadelivery-theme')) {
+        onThemeChange?.()
+      }
+    }
+    function onStorageChange(e: StorageEvent) {
+      if (e.key === 'wadelivery-theme') {
+        onThemeChange?.()
       }
     }
     mql.addEventListener('change', onSystemChange)
-    return () => mql.removeEventListener('change', onSystemChange)
+    window.addEventListener('storage', onStorageChange)
+    return () => {
+      mql.removeEventListener('change', onSystemChange)
+      window.removeEventListener('storage', onStorageChange)
+    }
   }, [])
 
   function toggleTheme() {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark'
-      localStorage.setItem('theme', next)
-      document.documentElement.setAttribute('data-theme', next)
-      return next
-    })
+    const next = theme === 'dark' ? 'light' : 'dark'
+    localStorage.setItem('wadelivery-theme', next)
+    document.documentElement.setAttribute('data-theme', next)
+    onThemeChange?.()
   }
 
   return (

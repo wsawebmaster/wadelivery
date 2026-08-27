@@ -12,7 +12,7 @@ export function Hero({ onOpenLead }: HeroProps) {
   return (
     <section className="hero" id="inicio">
       <div className="container hero-grid">
-        <div className="hero-content reveal">
+        <div className="hero-content">
           <div className="hero-badge">
             <span className="pulse-dot" />
             Plataforma para quem faz delivery
@@ -54,11 +54,11 @@ export function Hero({ onOpenLead }: HeroProps) {
 
         <Reveal delay={150} className="hero-visual">
           <PhoneMockup />
-          <div className="float-card float-card-a reveal" data-reveal-delay="350">
+          <div className="float-card float-card-a" data-reveal-delay="350">
             <span className="float-icon">&#128274;</span>
             <div><strong>Novo pedido</strong><small>#1042 — R$ 49,90</small></div>
           </div>
-          <div className="float-card float-card-b reveal" data-reveal-delay="500">
+          <div className="float-card float-card-b" data-reveal-delay="500">
             <span className="float-icon">&#128176;</span>
             <div><strong>0% comissão</strong><small>Você fica com tudo</small></div>
           </div>

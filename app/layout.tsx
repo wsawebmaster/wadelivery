@@ -35,16 +35,6 @@ export const metadata: Metadata = {
   },
 }
 
-const antiFOUC = `
-(function(){
-  try{
-    var t=localStorage.getItem('theme');
-    if(!t)t=matchMedia('(prefers-color-scheme:light)').matches?'light':'dark';
-    else t=t==='light'?'light':'dark';
-    document.documentElement.setAttribute('data-theme',t);
-  }catch(e){document.documentElement.setAttribute('data-theme','dark');}
-})()`
-
 export default function RootLayout({
   children,
 }: {
@@ -52,9 +42,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${sora.variable}`} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: antiFOUC }} />
-      </head>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
