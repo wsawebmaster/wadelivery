@@ -30,11 +30,13 @@ function getStoredTheme(): Theme | null {
   return null
 }
 
+let onThemeChange: (() => void) | null = null
+let hydrated = false
+
 function getClientTheme(): Theme {
+  if (!hydrated) return 'dark'
   return getStoredTheme() || getSystemTheme()
 }
-
-let onThemeChange: (() => void) | null = null
 
 function subscribe(callback: () => void) {
   onThemeChange = callback
@@ -49,6 +51,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme])
 
   useEffect(() => {
+    hydrated = true
+    onThemeChange?.()
+
     const mql = window.matchMedia('(prefers-color-scheme: light)')
     function onSystemChange() {
       if (!localStorage.getItem('wadelivery-theme')) {
