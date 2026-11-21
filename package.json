@@ -4,10 +4,26 @@
   "private": true,
   "description": "WaDelivery — Plataforma de delivery para restaurantes",
   "scripts": {
+    "sync:legacy": "node scripts/sync-legacy-admin.mjs",
+    "sync:storefront": "node scripts/sync-storefront.mjs",
+    "sync:public": "npm run sync:legacy && npm run sync:storefront",
+    "predev": "npm run sync:public",
     "dev": "next dev",
+    "prebuild": "npm run sync:public",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "dev:up": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-up.ps1",
+    "dev:down": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-down.ps1",
+    "dev:up:light": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-up-light.ps1",
+    "dev:down:light": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-down-light.ps1",
+    "storefront": "npm --prefix apps/storefront start",
+    "admin": "npm --prefix apps/admin start",
+    "catalog": "dotnet run --project services/catalog-api --launch-profile http",
+    "orders": "dotnet run --project services/orders-api --launch-profile http",
+    "gateway": "dotnet run --project services/gateway --launch-profile http",
+    "docker:up": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/docker-compose-wsl.ps1 up --build -d",
+    "docker:down": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/docker-compose-wsl.ps1 down"
   },
   "dependencies": {
     "next": "^15.3.3",

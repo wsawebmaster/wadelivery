@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WaDelivery · Fluxo do pedido</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600&family=Inter:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f8fafc;
+      --color-ink:     #1e293b;
+      --color-muted:   #475569;
+      --color-accent:  #ffb020;
+      --font-sans:     'Inter', system-ui, sans-serif;
+      --font-serif:    'Sora', system-ui, sans-serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 900px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Flowchart · User flow · WaDelivery</p>
+    <h1>Cliente pede no cardápio; o lojista recebe no WhatsApp</h1>
+
+    <svg viewBox="0 0 1000 1150" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="wa-flow-title wa-flow-desc">
+      <title id="wa-flow-title">Fluxo do pedido no cardápio do WaDelivery</title>
+      <desc id="wa-flow-desc">Jornada do cliente no cardápio dinâmico /{slug}: proteção de slug reservado, produto com opções, carrinho, checkout validado e envio do pedido ao WhatsApp do lojista.</desc>
+        <defs>
+          <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.9" fill="rgba(30,41,59,0.10)"/>
+          </pattern>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#475569"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#ffb020"/></marker>
+        </defs>
+
+        <rect width="100%" height="100%" fill="#f8fafc"/>
+        <rect width="100%" height="100%" fill="url(#dots)" opacity="0.55"/>
+
+        <!-- Arrows (drawn first, behind nodes) -->
+        <!-- Start → Slug? -->
+        <line x1="500" y1="84" x2="500" y2="116" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Slug? "reservado" right -->
+        <line x1="600" y1="164" x2="700" y2="164" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Slug? "não" down -->
+        <line x1="500" y1="212" x2="500" y2="244" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Tenant? "não" right -->
+        <line x1="600" y1="292" x2="700" y2="292" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Tenant? "sim" down -->
+        <line x1="500" y1="340" x2="500" y2="372" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Menu → Opções? -->
+        <line x1="500" y1="420" x2="500" y2="452" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Opções? "sim" right to modal -->
+        <line x1="600" y1="500" x2="690" y2="500" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Opções? "não" down -->
+        <line x1="500" y1="548" x2="500" y2="580" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Modal → junção no Adiciona ao carrinho (lado direito) -->
+        <path d="M 800,524 V 604 H 580" fill="none" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Adiciona → Finalizar -->
+        <line x1="500" y1="628" x2="500" y2="660" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Finalizar → Dados válidos? -->
+        <line x1="500" y1="708" x2="500" y2="740" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Dados válidos? "não" right -->
+        <line x1="600" y1="788" x2="690" y2="788" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Corrige campos → junção na ação focal -->
+        <path d="M 800,814 V 862 H 566 L 560,868" fill="none" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Dados válidos? "sim" down (coral — happy path) -->
+        <line x1="500" y1="836" x2="500" y2="868" stroke="#ffb020" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <!-- Focal → Rastreio -->
+        <line x1="500" y1="924" x2="500" y2="956" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- Rastreio → End -->
+        <line x1="500" y1="1004" x2="500" y2="1036" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- Arrow labels -->
+        <rect x="628" y="156" width="32" height="12" rx="2" fill="#f8fafc"/>
+        <text x="644" y="165" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">SIM</text>
+
+        <rect x="484" y="222" width="32" height="12" rx="2" fill="#f8fafc"/>
+        <text x="500" y="231" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">NÃO</text>
+
+        <rect x="626" y="284" width="32" height="12" rx="2" fill="#f8fafc"/>
+        <text x="642" y="293" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">NÃO</text>
+
+        <rect x="484" y="350" width="32" height="12" rx="2" fill="#f8fafc"/>
+        <text x="500" y="359" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">SIM</text>
+
+        <rect x="628" y="493" width="32" height="12" rx="2" fill="#f8fafc"/>
+        <text x="644" y="502" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">SIM</text>
+
+        <rect x="484" y="558" width="32" height="12" rx="2" fill="#f8fafc"/>
+        <text x="500" y="567" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">NÃO</text>
+
+        <rect x="626" y="781" width="32" height="12" rx="2" fill="#f8fafc"/>
+        <text x="642" y="790" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">NÃO</text>
+
+        <rect x="484" y="846" width="32" height="12" rx="2" fill="#f8fafc"/>
+        <text x="500" y="855" fill="#ffb020" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">SIM</text>
+
+        <!-- Start -->
+        <rect x="420" y="40" width="160" height="44" rx="22" fill="rgba(30,41,59,0.03)" stroke="rgba(30,41,59,0.30)" stroke-width="1"/>
+        <text x="500" y="63" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Cliente acessa</text>
+        <text x="500" y="77" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">cardápio /{'{slug}'}</text>
+
+        <!-- Diamond: Slug reservado? -->
+        <polygon points="500,116 600,164 500,212 400,164" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="500" y="160" fill="#1e293b" font-size="11" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Slug</text>
+        <text x="500" y="174" fill="#1e293b" font-size="11" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">reservado?</text>
+
+        <!-- End: 404 slug reservado -->
+        <rect x="720" y="142" width="160" height="44" rx="22" fill="rgba(30,41,59,0.03)" stroke="rgba(30,41,59,0.30)" stroke-width="1"/>
+        <text x="800" y="165" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">404</text>
+        <text x="800" y="179" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">rota reservada</text>
+
+        <!-- Diamond: Tenant existe? -->
+        <polygon points="500,244 600,292 500,340 400,292" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="500" y="288" fill="#1e293b" font-size="11" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Tenant</text>
+        <text x="500" y="302" fill="#1e293b" font-size="11" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">existe?</text>
+
+        <!-- End: 404 não encontrado -->
+        <rect x="720" y="270" width="160" height="44" rx="22" fill="rgba(30,41,59,0.03)" stroke="rgba(30,41,59,0.30)" stroke-width="1"/>
+        <text x="800" y="293" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">404</text>
+        <text x="800" y="307" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">não encontrado</text>
+
+        <!-- Step: Menu -->
+        <rect x="420" y="372" width="160" height="48" rx="6" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="500" y="400" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Cardápio do tenant</text>
+        <text x="500" y="414" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">mock-data.ts</text>
+
+        <!-- Diamond: Produto tem opções? -->
+        <polygon points="500,452 600,500 500,548 400,500" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="500" y="496" fill="#1e293b" font-size="11" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Produto tem</text>
+        <text x="500" y="510" fill="#1e293b" font-size="11" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">opções?</text>
+
+        <!-- Step: Modal de opções -->
+        <rect x="700" y="476" width="160" height="48" rx="6" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="780" y="504" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Modal de opções</text>
+        <text x="780" y="518" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">escolha · ajuste preço</text>
+
+        <!-- Step: Adiciona ao carrinho -->
+        <rect x="420" y="580" width="160" height="48" rx="6" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="500" y="608" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Adiciona ao carrinho</text>
+
+        <!-- Step: Finalizar -->
+        <rect x="420" y="660" width="160" height="48" rx="6" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="500" y="688" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Finalizar pedido</text>
+
+        <!-- Diamond: Dados válidos? -->
+        <polygon points="500,740 600,788 500,836 400,788" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="500" y="784" fill="#1e293b" font-size="11" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Dados</text>
+        <text x="500" y="798" fill="#1e293b" font-size="11" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">válidos?</text>
+
+        <!-- Step: Corrige campos -->
+        <rect x="720" y="770" width="160" height="44" rx="6" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="800" y="796" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Corrige campos</text>
+
+        <!-- Key step (focal) -->
+        <rect x="420" y="868" width="160" height="56" rx="6" fill="rgba(255,176,32,0.08)" stroke="#ffb020" stroke-width="1"/>
+        <text x="500" y="890" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Abre WhatsApp</text>
+        <text x="500" y="908" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">com o pedido montado</text>
+
+        <!-- Step: Rastreio -->
+        <rect x="420" y="956" width="160" height="48" rx="6" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="500" y="984" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Limpa carrinho</text>
+        <text x="500" y="998" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">rastreio auto · 25 min</text>
+
+        <!-- End -->
+        <rect x="420" y="1036" width="160" height="44" rx="22" fill="rgba(30,41,59,0.03)" stroke="rgba(30,41,59,0.30)" stroke-width="1"/>
+        <text x="500" y="1059" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Pedido no WhatsApp</text>
+        <text x="500" y="1073" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">goes to lojista</text>
+
+        <!-- Legend -->
+        <line x1="40" y1="1100" x2="960" y2="1100" stroke="rgba(30,41,59,0.10)" stroke-width="0.8"/>
+        <text x="40" y="1116" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGENDA · FORMA CARREGA O TIPO</text>
+
+        <rect x="40" y="1126" width="24" height="12" rx="6" fill="rgba(30,41,59,0.03)" stroke="rgba(30,41,59,0.30)" stroke-width="1"/>
+        <text x="72" y="1136" fill="#475569" font-size="8.5" font-family="'Inter', sans-serif">Início / fim (oval)</text>
+
+        <rect x="220" y="1126" width="24" height="12" rx="2" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="252" y="1136" fill="#475569" font-size="8.5" font-family="'Inter', sans-serif">Passo (retângulo)</text>
+
+        <polygon points="412,1132 424,1126 436,1132 424,1138" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+        <text x="448" y="1136" fill="#475569" font-size="8.5" font-family="'Inter', sans-serif">Decisão (losango)</text>
+
+        <line x1="604" y1="1132" x2="632" y2="1132" stroke="#ffb020" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <text x="640" y="1136" fill="#475569" font-size="8.5" font-family="'Inter', sans-serif">Caminho feliz</text>
+
+        <line x1="768" y1="1132" x2="796" y2="1132" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <text x="804" y="1136" fill="#475569" font-size="8.5" font-family="'Inter', sans-serif">Ramificação</text>
+      </svg>
+  </div>
+</body>
+</html>

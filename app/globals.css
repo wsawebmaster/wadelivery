@@ -64,6 +64,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.fabin-storefront-frame {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  border: 0;
+}
+
+.tenant-api-error {
+  display: grid;
+  min-height: 100vh;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 32px 20px;
+  color: var(--text);
+  text-align: center;
+}
+
+.tenant-api-error p {
+  color: var(--text-muted);
+}
+
+.tenant-api-error a {
+  color: var(--brand-light);
+  font-weight: 700;
+}
+
 img,
 svg {
   max-width: 100%;

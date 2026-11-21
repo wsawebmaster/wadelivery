@@ -1,6 +1,11 @@
 import { notFound } from 'next/navigation'
+import { getTenantBySlug } from '@/lib/mock-data'
+import { RESERVED_SLUGS } from '@/lib/tenant-hosts'
+import { resolvePublicTenant } from '@/lib/public-tenant'
+import { SlugPageClient } from './slug-page-client'
 
-const RESERVED_SLUGS = ['admin', 'api', 'assets', 'public', 'login', 'suporte', 'faq']
+export const dynamicParams = true
+export const revalidate = 60
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -9,26 +14,40 @@ interface PageProps {
 export default async function TenantPage({ params }: PageProps) {
   const { slug } = await params
 
-  if (RESERVED_SLUGS.includes(slug)) {
+  if (RESERVED_SLUGS.includes(slug.toLowerCase())) {
     notFound()
   }
 
-  // TODO: Fetch tenant data from API
-  // const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tenants/${slug}/menu`)
-  // if (!response.ok) notFound()
-  // const tenant = await response.json()
+  if (slug === 'fabin') {
+    return (
+      <iframe
+        className="fabin-storefront-frame"
+        src="/storefront/index.html?tenant=fabin"
+        title="Cardápio digital Fabin Lanches"
+      />
+    )
+  }
+
+  const lookup = await resolvePublicTenant(slug)
+  if (lookup.status === 'found') {
+    return (
+      <iframe
+        className="fabin-storefront-frame"
+        src={`/storefront/index.html?tenant=${encodeURIComponent(lookup.tenant.slug)}`}
+        title={`Cardápio digital ${lookup.tenant.name}`}
+      />
+    )
+  }
+
+  const demoTenant = getTenantBySlug(slug)
+  if (demoTenant) return <SlugPageClient tenant={demoTenant} />
+  if (lookup.status === 'not-found') notFound()
 
   return (
-    <div style={{ padding: '100px 24px', textAlign: 'center' }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '16px' }}>
-        Cardápio: {slug}
-      </h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: '18px' }}>
-        Esta página será o cardápio digital do lojista <strong>{slug}</strong>.
-      </p>
-      <p style={{ color: 'var(--text-faint)', fontSize: '14px', marginTop: '24px' }}>
-        Integração com a API será implementada quando o backend estiver disponível.
-      </p>
-    </div>
+    <main className="tenant-api-error" role="alert">
+      <h1>Não foi possível carregar o cardápio</h1>
+      <p>A API está indisponível no momento. Tente novamente em instantes.</p>
+      <a href={`/${encodeURIComponent(slug)}`}>Tentar novamente</a>
+    </main>
   )
 }

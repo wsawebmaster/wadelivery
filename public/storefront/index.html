@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Cardápio online da Fabin Lanches. Peça hambúrguer, hot dog e bebidas com entrega. Pedido pelo WhatsApp.">
+    <meta name="theme-color" content="#1f6feb">
+    <meta property="og:title" content="Fabin Lanches — Cardápio Delivery">
+    <meta property="og:description" content="Peça agora: hambúrgueres, hot dogs, vegetarianos e bebidas. Entrega nos bairros atendidos.">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <title>Fabin Lanches — Cardápio Delivery</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%94%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=3">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css?v=195">
+</head>
+<body>
+<div id="storeInactiveScreen" class="store-inactive-screen" hidden>
+    <div class="store-inactive-card">
+        <h1>Loja indisponível</h1>
+        <p>Esta loja está temporariamente <strong>inativa</strong>.</p>
+        <p>Entre em contato com o <strong>Administrador</strong> para mais informações.</p>
+    </div>
+</div>
+
+<div id="mesasGate" class="mesas-gate" hidden>
+    <div class="mesas-gate-card">
+        <h2>Atendimento</h2>
+        <div id="mesasLoginScreen" class="mesas-screen">
+            <p class="muted">Faça login com o usuário da loja (equipe) para registrar pedidos.</p>
+            <label>Usuário
+                <input id="mesasLoginUser" type="text" autocomplete="username" placeholder="Usuário" />
+            </label>
+            <label>Senha
+                <input id="mesasLoginPass" type="password" autocomplete="current-password" placeholder="Senha" />
+            </label>
+            <div id="mesasLoginError" class="mesas-error" hidden></div>
+            <button type="button" id="mesasLoginBtn" class="finalize">Entrar</button>
+            <button type="button" id="mesasCancelBtn" class="secondary-btn">Voltar ao cardápio</button>
+        </div>
+        <div id="mesasChannelsScreen" class="mesas-screen" hidden>
+            <p class="mesas-greeting">Olá, <strong id="mesasChannelsName"></strong>! Seja Bem-Vindo!</p>
+            <p class="muted">Escolha o canal para registrar o pedido:</p>
+            <div class="mesas-channels">
+                <button type="button" class="mesas-channel" data-staff-channel="balcao">🛒 Balcão</button>
+                <button type="button" class="mesas-channel" data-staff-channel="delivery">🛵 Delivery</button>
+                <button type="button" class="mesas-channel" data-staff-channel="mesas">🪑 Mesas</button>
+                <button type="button" class="mesas-channel" data-staff-channel="telefone">📞 Telefone</button>
+            </div>
+            <button type="button" id="mesasChannelsLogoutBtn" class="secondary-btn">Sair</button>
+        </div>
+        <div id="mesasMapScreen" class="mesas-screen" hidden>
+            <div class="mesas-map-header">
+                <div>
+                    <p class="mesas-greeting">Olá, <strong id="mesasWaiterName"></strong>! Seja Bem-Vindo!</p>
+                    <p class="muted">Atenda várias mesas ao mesmo tempo: escolha uma, faça o pedido e volte ao mapa para a próxima.</p>
+                </div>
+            </div>
+            <div class="mesas-tables-legend">
+                <span class="mesas-legend-item"><i class="mesas-legend-dot is-free"></i>Livre</span>
+                <span class="mesas-legend-item"><i class="mesas-legend-dot is-occupied"></i>Ocupada</span>
+                <span class="mesas-legend-item"><i class="mesas-legend-dot is-inactive"></i>Inativa</span>
+            </div>
+            <div id="mesasMap" class="mesas-map"></div>
+        </div>
+    </div>
+</div>
+
+<header class="barra__topo__md">
+    <div class="barra-topo-brand">
+        <h3>FABIN LANCHES</h3>
+        <button type="button" id="productSearchToggle" class="barra-pesquisa-toggle" title="Buscar produtos" aria-label="Buscar produtos" aria-expanded="false" aria-controls="productSearchPanel">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        </button>
+    </div>
+    <div class="barra-mesas-actions" id="mesasHeaderActions" hidden>
+        <button type="button" id="mesasHeaderViewBtn" class="barra-mesas-icon" title="Visualizar mesas" aria-label="Visualizar mesas">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <button type="button" id="mesasHeaderLogoutBtn" class="barra-mesas-icon" title="Trocar de garçom (sair)" aria-label="Sair e trocar de garçom">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+    </div>
+</header>
+
+<div class="product-search-panel" id="productSearchPanel" hidden>
+    <input type="search" id="productSearchInput" placeholder="Buscar produtos..." aria-label="Buscar produtos" autocomplete="off" autocapitalize="off" spellcheck="false">
+</div>
+
+<div id="storeClosedBanner" class="store-closed-banner" hidden role="status"></div>
+
+<div class="categories-wrapper">
+    <nav class="categories" id="categoriesBar" tabindex="0" aria-label="Categorias do cardápio"></nav>
+</div>
+
+<main>
+    <div class="menu-pager">
+        <button class="menu-nav-arrow menu-nav-prev" id="menuNavPrev" aria-label="Categoria anterior" type="button">&#8249;</button>
+        <section id="menu" aria-live="polite" tabindex="0" aria-label="Cardápio por categoria. Use as setas esquerda e direita para navegar, ou deslize o conteúdo."></section>
+        <button class="menu-nav-arrow menu-nav-next" id="menuNavNext" aria-label="Próxima categoria" type="button">&#8250;</button>
+    </div>
+    <div class="menu-drag-hint" id="menuDragHint" aria-hidden="true"></div>
+</main>
+
+<div class="modal" id="cartModal" role="dialog" aria-modal="true" aria-labelledby="cartModalTitle">
+    <div class="modal-content">
+        <button class="close-button" type="button" data-close-modal="cartModal">Fechar</button>
+        <h2 id="cartModalTitle">Seu Carrinho</h2>
+        <ul id="cartItems" class="cart-items"></ul>
+
+        <button type="button" class="secondary-btn" id="continueShoppingBtn">Continuar Comprando</button>
+        
+        <section id="fulfillmentSection" class="fulfillment-section" aria-label="Como receber o pedido" hidden>
+          <h3 class="fulfillment-title">Como você prefere receber o seu pedido?</h3>
+          <div class="fulfillment-options" role="group" aria-label="Forma de recebimento">
+            <button type="button" class="fulfillment-option" id="fulfillmentDeliveryBtn" data-fulfillment="delivery">
+              Entregar no meu endereço
+            </button>
+            <button type="button" class="fulfillment-option" id="fulfillmentPickupBtn" data-fulfillment="pickup">
+              Retirar no local
+            </button>
+          </div>
+          <p id="fulfillmentPickupHint" class="fulfillment-pickup-hint muted" hidden></p>
+        </section>
+
+        <div id="dineInBanner" class="dine-in-banner" hidden></div>
+
+        <div id="storefrontToast" class="sf-toast" role="status" aria-live="polite" hidden></div>
+
+        <section id="customerAddressSection" class="customer-address-section" aria-label="Endereços de entrega do cliente" hidden>
+          <div class="address-book-head">
+            <h3 class="address-book-title">Endereço de entrega</h3>
+            <button type="button" id="addAddressBtn" class="secondary-btn address-add-btn">+ Adicionar novo endereço</button>
+          </div>
+          <div id="savedAddressesList" class="address-cards" role="radiogroup" aria-label="Endereços salvos do cliente"></div>
+          <p id="addressBookEmpty" class="address-book-empty muted" hidden>Nenhum endereço salvo. Adicione um para continuar.</p>
+
+          <div id="addressFormSection" class="address-form-section" hidden>
+            <fieldset class="residence-type" role="radiogroup" aria-label="Tipo de residência">
+              <legend class="field-label">Tipo de residência</legend>
+              <div class="residence-type-options">
+                <label class="residence-type-option"><input type="radio" name="residenceType" value="casa" checked /> Casa</label>
+                <label class="residence-type-option"><input type="radio" name="residenceType" value="condominio" /> Condomínio</label>
+                <label class="residence-type-option"><input type="radio" name="residenceType" value="apartamento" /> Apartamento</label>
+              </div>
+            </fieldset>
+
+            <label class="field-label" for="addressLabel">Apelido do endereço (opcional)</label>
+            <input type="text" id="addressLabel" class="input-field" placeholder="Ex.: Casa, Trabalho, Namorado(a)" maxlength="40" autocomplete="off" />
+
+            <div class="cep-mode-tabs" role="tablist" aria-label="Como informar o endereço">
+              <button type="button" class="cep-mode-tab active" data-cep-mode="cep" role="tab" aria-selected="true">Tenho o CEP</button>
+              <button type="button" class="cep-mode-tab" data-cep-mode="street" role="tab" aria-selected="false">Não sei o CEP</button>
+            </div>
+
+            <div id="cepModeCep">
+              <label class="field-label" for="cepInput">CEP</label>
+              <input type="tel" id="cepInput" class="input-field" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9" />
+              <p id="cepFieldError" class="field-error" hidden></p>
+              <div id="cepStatus" class="cep-status" hidden></div>
+            </div>
+
+            <div id="cepModeStreet" hidden>
+              <p class="muted address-street-hint">UF e cidade vêm da loja. Informe o número e a rua para localizar o CEP e calcular a taxa corretamente.</p>
+              <div class="address-street-row">
+                <div>
+                  <label class="field-label" for="streetSearchUf">UF</label>
+                  <input type="text" id="streetSearchUf" class="input-field" placeholder="SP" maxlength="2" autocomplete="address-level1" readonly />
+                </div>
+                <div class="address-street-city">
+                  <label class="field-label" for="streetSearchCity">Cidade</label>
+                  <input type="text" id="streetSearchCity" class="input-field" placeholder="Ribeirão Preto" autocomplete="address-level2" readonly />
+                </div>
+              </div>
+              <div class="address-street-search-row">
+                <div>
+                  <label class="field-label" for="streetSearchNumber">Número</label>
+                  <input type="tel" id="streetSearchNumber" class="input-field" placeholder="Nº" inputmode="numeric" autocomplete="address-line2" />
+                </div>
+                <div class="address-street-query">
+                  <label class="field-label" for="streetSearchQuery">Rua / avenida</label>
+                  <input type="text" id="streetSearchQuery" class="input-field" placeholder="Ex.: Campos Salles" autocomplete="street-address" />
+                </div>
+              </div>
+              <p id="streetSearchError" class="field-error" hidden></p>
+              <button type="button" id="streetSearchBtn" class="secondary-btn address-search-btn">Buscar CEP</button>
+              <div id="streetSearchPickWarn" class="street-cep-pick-warn" hidden role="status" aria-live="polite">
+                <strong>Selecione um CEP abaixo</strong>
+                <span>Encontramos opções para esta rua. Toque em uma linha para continuar — sem escolher, o endereço não pode ser salvo.</span>
+              </div>
+              <ul id="streetSearchResults" class="street-results" hidden></ul>
+            </div>
+
+            <div id="enderecoInfo" class="endereco-info" style="display: none;"></div>
+
+            <div id="dynFieldsCasa" data-residence="casa">
+              <label class="field-label" for="numeroInput">Número</label>
+              <input type="tel" id="numeroInput" class="input-field" placeholder="Número da residência" inputmode="numeric" autocomplete="address-line2" />
+              <label class="field-label" for="pontoReferenciaInput">Ponto de referência / complemento (opcional)</label>
+              <input type="text" id="pontoReferenciaInput" class="input-field" placeholder="Ex.: portão azul, ao lado do mercado" />
+            </div>
+
+            <div id="dynFieldsCondo" data-residence="condominio" hidden>
+              <label class="field-label" for="condoNumber">Número</label>
+              <input type="tel" id="condoNumber" class="input-field" placeholder="Número" inputmode="numeric" />
+              <label class="field-label" for="condoName">Nome/Bloco do condomínio (opcional)</label>
+              <input type="text" id="condoName" class="input-field" placeholder="Ex.: Residencial Flores, Bloco B" />
+              <label class="field-label" for="condoBlockLot">Quadra/Lote (opcional)</label>
+              <input type="text" id="condoBlockLot" class="input-field" placeholder="Ex.: Qd. 12 / Lt. 05" />
+              <label class="field-label" for="condoNotes">Instruções de entrega / portaria</label>
+              <textarea id="condoNotes" class="input-field textarea" rows="2" placeholder="Ex.: deixar na portaria, interfone 12"></textarea>
+            </div>
+
+            <div id="dynFieldsApt" data-residence="apartamento" hidden>
+              <label class="field-label" for="aptBuilding">Número do prédio/condomínio</label>
+              <input type="tel" id="aptBuilding" class="input-field" placeholder="Número do prédio" inputmode="numeric" />
+              <label class="field-label" for="aptTower">Torre/Bloco</label>
+              <input type="text" id="aptTower" class="input-field" placeholder="Ex.: Torre 1 / Bloco A" />
+              <label class="field-label" for="aptNumber">Número do apartamento</label>
+              <input type="text" id="aptNumber" class="input-field" placeholder="Ex.: 102" />
+              <label class="field-label" for="aptFloor">Andar (opcional)</label>
+              <input type="text" id="aptFloor" class="input-field" placeholder="Ex.: 10º" />
+              <label class="field-label" for="aptNotes">Instruções para o entregador / portaria</label>
+              <textarea id="aptNotes" class="input-field textarea" rows="2" placeholder="Ex.: interfone 102, deixar na portaria"></textarea>
+            </div>
+
+            <label class="checkbox-label address-default-check">
+              <input type="checkbox" id="addressIsDefault" />
+              Definir como endereço padrão para entregas futuras
+            </label>
+
+            <div class="address-form-actions">
+              <button type="button" id="saveAddressBtn" class="finalize">Salvar endereço</button>
+              <button type="button" id="cancelAddressBtn" class="secondary-btn">Cancelar</button>
+            </div>
+          </div>
+        </section>
+
+        <div id="checkoutAfterCep" class="checkout-after-cep" hidden>
+          <label class="field-label" for="clienteNome">Nome</label>
+          <input type="text" id="clienteNome" class="input-field" placeholder="Seu nome" autocomplete="name" />
+
+          <label class="field-label" for="clienteTelefone">Telefone</label>
+          <input type="tel" id="clienteTelefone" class="input-field" placeholder="(00) 00000-0000" inputmode="tel" autocomplete="tel" />
+
+          <label class="field-label" for="formaPagamento">Forma de pagamento</label>
+          <select id="formaPagamento" class="input-field">
+              <option value="" disabled selected>Selecione</option>
+              <option value="Pix">Pix</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Cartão de Crédito">Cartão de Crédito</option>
+              <option value="Cartão de Débito">Cartão de Débito</option>
+          </select>
+
+          <div id="pixWrap" class="payment-extra" hidden>
+              <p class="field-label">Quando deseja pagar?</p>
+              <div class="pix-timing-options" role="group" aria-label="Momento do Pix">
+                  <label class="checkbox-label pix-timing-option">
+                      <input type="radio" name="pixTiming" value="now" />
+                      Pagar agora
+                  </label>
+                  <label class="checkbox-label pix-timing-option">
+                      <input type="radio" name="pixTiming" value="on_delivery" />
+                      <span id="pixPayOnDeliveryLabel">Pagar na entrega</span>
+                  </label>
+              </div>
+              <div id="pixPayNowBox" class="pix-pay-now" hidden>
+                  <p class="pix-info">Chave Pix (<span id="pixKeyLabelText">telefone</span>): <strong id="pixKeyValue"></strong></p>
+                  <button type="button" id="copyPixBtn" class="secondary-btn">Copiar chave</button>
+                  <p class="pix-receipt-hint">Após pagar, envie o comprovante pelo WhatsApp junto com o pedido para agilizar a confirmação.</p>
+              </div>
+          </div>
+
+          <div id="trocoWrap" class="payment-extra" hidden>
+              <label class="checkbox-label">
+                  <input type="checkbox" id="precisaTroco" />
+                  Preciso de troco
+              </label>
+              <label class="field-label" for="trocoInput">Troco para quanto?</label>
+              <input type="text" id="trocoInput" class="input-field" placeholder="Ex.: 50" inputmode="decimal" disabled />
+          </div>
+
+          <div class="cart-order-total">
+            <div class="cart-total-summary">
+              <div class="cart-total-main">
+                <span class="cart-total-label">Total</span>
+                <strong id="finalTotal">R$ 0,00</strong>
+              </div>
+              <button type="button" id="toggleCartTotalDetails" class="cart-total-details-btn" aria-expanded="false" aria-controls="cartTotalDetails">
+                Detalhes
+              </button>
+            </div>
+            <div id="cartTotalDetails" class="cart-total-details" hidden>
+              <div class="cart-total-detail-row">
+                <span>Itens</span>
+                <span id="totalValue">R$ 0,00</span>
+              </div>
+              <div class="cart-total-detail-row">
+                <span id="entregaLabel">Entrega</span>
+                <span id="entregaValue">R$ 0,00</span>
+              </div>
+            </div>
+          </div>
+
+          <label class="field-label" for="observacoesInput">Observações gerais do pedido</label>
+          <textarea id="observacoesInput" class="input-field textarea" rows="2" placeholder="Opcional"></textarea>
+
+          <div class="cart-checkout-actions">
+            <button type="button" class="finalize" id="finalizeOrderBtn">Finalizar Pedido</button>
+          </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="optionModal" role="dialog" aria-modal="true" aria-labelledby="optionModalTitle">
+    <div class="modal-content option-modal-content">
+        <button class="close-button" type="button" data-close-modal="optionModal">Fechar</button>
+        <h2 id="optionModalTitle">Escolha uma opção</h2>
+        <p id="optionModalProduct" class="option-product-name"></p>
+        <p id="optionModalQuestion" class="option-question"></p>
+        <div id="optionChoices" class="option-choices" role="group" aria-label="Opções do produto"></div>
+    </div>
+</div>
+
+<div class="modal" id="drinkUpsellModal" role="dialog" aria-modal="true" aria-labelledby="drinkUpsellTitle">
+    <div class="modal-content option-modal-content">
+        <button class="close-button" type="button" data-close-modal="drinkUpsellModal">Fechar</button>
+        <h2 id="drinkUpsellTitle">Algo para beber?</h2>
+        <p class="option-question">Alguma bebida para acompanhar?</p>
+        <div class="option-choices drink-upsell-actions">
+            <button type="button" id="drinkUpsellYesBtn" class="option-choice-btn">Sim, quero ver bebidas</button>
+            <button type="button" id="drinkUpsellNoBtn" class="option-choice-btn option-choice-secondary">Não, finalizar pedido</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="repeatOrderModal" role="dialog" aria-modal="true" aria-labelledby="repeatOrderTitle">
+    <div class="modal-content option-modal-content">
+        <button class="close-button" type="button" data-close-modal="repeatOrderModal" aria-label="Fechar">Fechar</button>
+        <h2 id="repeatOrderTitle">Último pedido</h2>
+        <p class="option-question">Encontramos itens do seu último pedido neste aparelho.</p>
+        <p id="repeatOrderSummary" class="repeat-order-summary" hidden></p>
+        <div class="option-choices drink-upsell-actions">
+            <button type="button" id="repeatOrderYesBtn" class="option-choice-btn">Repetir meu último pedido!</button>
+            <button type="button" id="repeatOrderNoBtn" class="option-choice-btn option-choice-secondary">Fazer novo pedido!</button>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-menu" id="bottomMenu">
+    <div class="total-value" id="bottomTotalValue">Subtotal: R$ 0,00</div>
+    <div class="cart-count" id="cartCount">0 itens</div>
+    <button class="cart-button" id="cartButton" type="button">Carrinho</button>
+</div>
+
+<button type="button" id="orderTrackFab" class="order-track-fab" hidden aria-live="polite">
+  <span class="order-track-fab-label">Pedido</span>
+  <span class="order-track-fab-status" id="orderTrackFabStatus">—</span>
+</button>
+
+<div class="modal" id="orderTrackModal" role="dialog" aria-modal="true" aria-labelledby="orderTrackTitle">
+  <div class="modal-content order-track-modal-content">
+    <header class="ot-modal-head">
+      <div class="ot-modal-head-text">
+        <h2 id="orderTrackTitle">Seu pedido</h2>
+        <p class="order-id-line">Número: <strong id="orderTrackId"></strong></p>
+      </div>
+      <button class="close-button ot-close-btn" type="button" data-close-modal="orderTrackModal">Fechar</button>
+    </header>
+
+    <div class="ot-modal-body">
+      <div id="orderTrackStepper" class="ot-stepper" aria-label="Etapas do pedido"></div>
+      <div id="orderTrackEta" class="ot-eta" hidden>
+        <span class="ot-eta-label">Previsão de entrega:</span>
+        <strong id="orderTrackEtaRange" class="ot-eta-range">—</strong>
+      </div>
+
+      <p class="order-track-status-line">Status: <strong id="orderTrackStatusLabel"></strong></p>
+      <div id="orderTrackDetails" class="order-track-details"></div>
+    </div>
+
+    <footer class="ot-modal-actions">
+      <button type="button" id="orderTrackConfirmBtn" class="finalize" hidden>
+        Confirmar o recebimento
+      </button>
+      <div class="ot-share-row">
+        <button type="button" id="orderTrackCopyLink" class="secondary-btn">Compartilhar link</button>
+        <button type="button" id="orderTrackShareWhatsApp" class="secondary-btn">Reenviar WhatsApp</button>
+      </div>
+      <button type="button" class="secondary-btn" data-close-modal="orderTrackModal">Fechar</button>
+    </footer>
+  </div>
+</div>
+
+<div id="installAppBar" class="install-app-bar" hidden>
+    <div class="install-app-bar-main">
+        <button type="button" id="installAppYesBtn" class="install-app-bar-btn">
+            Adicionar esta página à área de trabalho para acesso rápido!
+        </button>
+        <button type="button" id="installAppBarClose" class="install-app-bar-close" aria-label="Fechar">×</button>
+    </div>
+    <p id="installAppTip" class="install-app-bar-tip" hidden></p>
+</div>
+
+<div class="modal" id="imageLightbox" role="dialog" aria-modal="true" aria-label="Imagem ampliada do produto">
+    <button class="image-lightbox-close" type="button" data-close-modal="imageLightbox" aria-label="Fechar imagem">×</button>
+    <img id="imageLightboxImg" src="" alt="" />
+</div>
+
+<script src="assets/delivery-qr-modal.js?v=1"></script>
+<script src="assets/script/api-config.js?v=4"></script>
+<script src="assets/script/script.js?v=195"></script>
+</body>
+</html>

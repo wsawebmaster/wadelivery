@@ -1,0 +1,126 @@
+﻿{
+    "storeName":  "Fabin Lanches",
+    "logoUrl":  "",
+    "whatsapp":  "5516992496886",
+    "pixKey":  "16992496886",
+    "pixKeyLabel":  "Telefone",
+    "minOrder":  0,
+    "currencyLocale":  "pt-BR",
+    "schedule":  {
+                     "days":  [
+                                  1,
+                                  2,
+                                  3,
+                                  4,
+                                  5,
+                                  6
+                              ],
+                     "open":  "11:00",
+                     "close":  "23:55",
+                     "closedMessage":  "Estamos fechados no momento. Funcionamos de segunda a sábado, das 11:00 às 23:55.",
+                     "perDay":  [
+                                    {
+                                        "day":  0,
+                                        "enabled":  false,
+                                        "open":  "11:00",
+                                        "close":  "23:55",
+                                        "breakEnabled":  false,
+                                        "breakStart":  "",
+                                        "breakEnd":  "",
+                                        "deliveryMinutes":  null
+                                    },
+                                    {
+                                        "day":  1,
+                                        "enabled":  true,
+                                        "open":  "11:00",
+                                        "close":  "23:55",
+                                        "breakEnabled":  false,
+                                        "breakStart":  "",
+                                        "breakEnd":  "",
+                                        "deliveryMinutes":  null
+                                    },
+                                    {
+                                        "day":  2,
+                                        "enabled":  true,
+                                        "open":  "11:00",
+                                        "close":  "23:55",
+                                        "breakEnabled":  false,
+                                        "breakStart":  "",
+                                        "breakEnd":  "",
+                                        "deliveryMinutes":  null
+                                    },
+                                    {
+                                        "day":  3,
+                                        "enabled":  true,
+                                        "open":  "11:00",
+                                        "close":  "23:55",
+                                        "breakEnabled":  false,
+                                        "breakStart":  "",
+                                        "breakEnd":  "",
+                                        "deliveryMinutes":  null
+                                    },
+                                    {
+                                        "day":  4,
+                                        "enabled":  true,
+                                        "open":  "11:00",
+                                        "close":  "23:55",
+                                        "breakEnabled":  false,
+                                        "breakStart":  "",
+                                        "breakEnd":  "",
+                                        "deliveryMinutes":  null
+                                    },
+                                    {
+                                        "day":  5,
+                                        "enabled":  true,
+                                        "open":  "11:00",
+                                        "close":  "23:55",
+                                        "breakEnabled":  false,
+                                        "breakStart":  "",
+                                        "breakEnd":  "",
+                                        "deliveryMinutes":  null
+                                    },
+                                    {
+                                        "day":  6,
+                                        "enabled":  true,
+                                        "open":  "11:00",
+                                        "close":  "23:55",
+                                        "breakEnabled":  false,
+                                        "breakStart":  "",
+                                        "breakEnd":  "",
+                                        "deliveryMinutes":  null
+                                    }
+                                ]
+                 },
+    "deliveryFees":  {
+                         "Jardim Antártica":  5,
+                         "Vila Tibério":  5,
+                         "Jardim Paiva":  10
+                     },
+    "address":  "Rua Guilherme Schmidt, 987, Jardim Antártica, Ribeirão Preto - SP",
+    "cep":  "14051-170",
+    "latitude":  -21.1682652,
+    "longitude":  -47.8341678,
+    "deliveryFeePerKm":  2.00,
+    "maxDeliveryKm":  15.00,
+    "minDeliveryFee":  3.00,
+    "averageDeliveryMinutes":  45,
+    "breadOptions":  [
+                         {
+                             "id":  "pao-frances",
+                             "label":  "Pão francês",
+                             "available":  true
+                         },
+                         {
+                             "id":  "pao-hamburguer",
+                             "label":  "Pão hambúrguer",
+                             "available":  true
+                         }
+                     ],
+    "acceptingOrders":  true,
+    "addressNumber":  "987",
+    "iconUrl":  "",
+    "extendedCloseUntilUtc":  null,
+    "city":  "Ribeirão Preto",
+    "state":  "SP",
+    "active":  true
+}

@@ -1,0 +1,10 @@
+{
+  "name": "fabin-lanches-admin",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npx --yes serve . -l tcp://0.0.0.0:8081",
+    "dev": "npx --yes serve . -l tcp://0.0.0.0:8081",
+    "build": "node scripts/inject-api-config.js"
+  }
+}

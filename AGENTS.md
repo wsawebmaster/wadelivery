@@ -1,133 +1,52 @@
 # Guia para agentes
 
-## Objetivo do produto
+## Estado atual
 
-O WaDelivery é um SaaS de delivery para restaurantes e operações de alimentação. A landing page na raiz do domínio atrai lojistas e, no produto final, cada lojista terá um cardápio digital próprio, painel de gestão e API multi-tenant.
+WaDelivery é um monorepo com landing Next.js, loja operacional Fabin, painel administrativo e APIs .NET. A integração foi autorizada para este repositório; não altere `D:\delivery`, que permanece como origem separada.
 
-Este repositório ainda contém somente o MVP da landing page. Atualmente não há Next.js, backend, banco de dados, integração de API, pipeline de provisionamento ou suíte de testes.
+- `app/`, `components/`, `lib/`: landing, painel da plataforma e rotas Next.js.
+- `/login`: entrada do painel da plataforma; `/admin/login` redireciona para `/login`.
+- `/admin/lojas`: gestão da plataforma; `/admin/legado`: painel operacional existente.
+- `/criar-loja`: formulário de quatro etapas; o provisionamento real requer catalog-api com PostgreSQL.
+- `POST /api/lojas/criar-completa`: cria a loja, `AdminLoja`, dados padrão e imagens dentro do fluxo transacional. A senha temporária é exibida apenas na resposta; não há envio por e-mail.
+- `GET /api/lojas/slug/{slug}` e `app/[slug]`: resolução pública de tenants por caminho. A URL planejada/implementada é `/{slug}`, não subdomínio.
+- `/fabin`: storefront original em `apps/storefront`, publicado em `public/storefront` por `scripts/sync-storefront.mjs`.
+- `apps/admin`: painel operacional original, publicado em `public/legacy-admin` por `scripts/sync-legacy-admin.mjs`.
+- `services/`: catalog-api, orders-api e gateway .NET.
+- `data/`: seed/configuração local; PostgreSQL é usado no ambiente completo.
 
-## Estado atual do repositório
+## Comportamento e limitações conhecidas
 
-- `index.html`: landing page em HTML, conteúdo em pt-BR, acessibilidade e formulário de interesse.
-- `assets/css/style.css`: tokens visuais, layout, responsividade e animações.
-- `assets/js/script.js`: menu mobile, efeitos de entrada, contadores, modal, máscara e validação do formulário.
-- `package.json`: scripts `npm start` e `npm run dev`, ambos usando `serve` na porta `8082`.
-- `vercel.json`: rewrite temporário para servir `index.html` nas rotas que não são assets.
+- `/fabin` mantém o storefront original dentro de um iframe e depende das APIs para catálogo, checkout e pedidos.
+- `/fabin` mantém o storefront original dentro de um iframe. Lojas cadastradas pela API são resolvidas por slug, carregam as configurações visuais e exibem 404 se não existirem.
+- O cadastro automatizado depende de PostgreSQL, migration aplicada e armazenamento persistente para uploads; o modo JSON/leve não provisiona lojas.
+- O cadastro marca lojas como teste/cortesia sem expiração automática definida. Não há integração de e-mail, CRM ou WhatsApp.
+- A pilha completa de pedidos requer `npm run dev:up`, Docker e um `.env` local preenchido. `npm run dev:up:light` não inicia orders-api.
+- `npm run lint` não é uma validação automatizada utilizável enquanto não houver configuração ESLint compatível.
 
-Não declare capacidades futuras como implementadas. O formulário atual valida nome, telefone e e-mail no navegador e salva os dados somente em `localStorage`, usando a chave `landing_leads_v1`. Ele não envia leads para API, CRM, WhatsApp ou e-mail. 
-
-**Regra do MVP:** O `script.js` deve validar duplicidade simples (por e-mail ou telefone) no `localStorage` antes de computar um novo lead, evitando dados redundantes e manipulação artificial do contador local no ambiente de demonstração.
-
-## Arquitetura alvo
-
-Quando a migração for aprovada, a arquitetura planejada será:
-
-| Finalidade | URL | Hospedagem |
-| --- | --- | --- |
-| Landing de vendas B2B | `https://wadelivery.com.br` | Frontend Next.js na Vercel |
-| Cardápio do cliente | `https://wadelivery.com.br{slug}` | Frontend Next.js na Vercel |
-| Painel do lojista | `https://wadelivery.com.br` | Frontend Next.js na Vercel |
-| API do sistema | `https://wadelivery.com.br` | C#/.NET na Railway |
-| Banco de dados | PostgreSQL | Railway |
-
-### Decisão de roteamento
-
-O formato recomendado para o cardápio é uma rota por caminho, como `wadelivery.com.br/novocliente`. Isso é uma rota dinâmica, não um subdomínio. No Next.js, a implementação deverá usar uma rota equivalente a `app/[slug]/page.tsx`, extrair o `slug` e consultar a API.
-
-Essa escolha evita criar ou alterar DNS para cada novo lojista. O uso futuro de subdomínios, como `://wadelivery.com.br`, exigirá uma decisão separada sobre wildcard DNS, middleware, domínios da Vercel e resolução por host.
-
-Fluxo conceitual do cardápio:
-
-```text
-GET /novocliente
-	-> Next.js extrai o slug "novocliente"
-	-> API: GET https://wadelivery.com.br/api/tenants/novocliente/menu
-	-> página renderiza marca, categorias e produtos do tenant
-```
-
-O PostgreSQL poderá usar um banco compartilhado com `tenant_id` ou isolamento por banco/schema. Essa decisão pertence ao backend e deve ser registrada antes da implementação. Nunca misture dados de tenants por confiar apenas no frontend.
-
-## Onboarding sem trabalho manual
-
-O fluxo alvo para um novo lojista é:
-
-1. O lojista preenche o formulário da landing com nome, telefone, e-mail e segmento.
-2. O frontend envia os dados para um endpoint real da API.
-3. O backend valida e normaliza os dados, registra o lead e cria ou inicia o tenant.
-4. O segmento deve ser controlado e validado no servidor: `lanchonete`, `hamburgueria`, `pizzaria` ou `marmitaria`.
-5. O backend gera, reserva e verifica a disponibilidade de um `slug` único. O segmento não deve ser usado diretamente como slug sem normalização e tratamento de colisões.
-6. A API retorna a URL do cardápio, por exemplo `https://wadelivery.com.brnovocliente`.
-7. O lojista administra produtos, categorias, pedidos e configurações pelo painel.
-
-A criação do tenant deve ser idempotente quando houver reenvio da mesma solicitação. O backend é responsável por autorização, validação, persistência, isolamento dos tenants, LGPD, rate limiting e observabilidade.
-
-## Contrato frontend/API
-
-Até existir um contrato oficial, trate endpoints e payloads como decisões pendentes. Antes de escrever integração, confirmar o contrato OpenAPI ou equivalente com o backend.
-
-Regras obrigatórias para qualquer frontend futuro:
-
-- Usar a URL da API por variável de ambiente; nunca fixar ambientes ou segredos no código.
-- Considerar a API como fonte de verdade para tenants, cardápios, produtos, pedidos e leads.
-- Implementar estados de carregamento, tenant inexistente (`404`), API indisponível, resposta inválida e tentativa novamente.
-- Configurar e validar CORS, autenticação e autorização conforme o backend. Não confiar em `tenant_id` fornecido pelo cliente.
-- Não colocar connection strings, tokens privados ou credenciais in código executado no navegador.
-- Validar entradas no frontend para boa experiência e novamente no backend por segurança.
-- Usar WebSockets para atualização em tempo real somente quando o contrato e a autenticação estiverem definidos.
-- Não exibir mensagem de sucesso de captação real enquanto a API não confirmar o recebimento.
+Não descreva capacidades planejadas como implementadas. Para funcionalidades de tenant, confirmar o contrato OpenAPI e usar a API como fonte de verdade; nunca confiar apenas no `tenant_id` enviado pelo cliente.
 
 ## Regras de implementação
 
-- Enquanto a migração não for aprovada, preserve a natureza estática e o JavaScript compatível com navegadores modernos.
-- Na migração, preferir Next.js com App Router e rota dinâmica `[slug]`, mantendo a landing em `/` e separando as áreas de cliente e administração.
-- **Segurança de Rotas Dinâmicas:** O sistema e o backend devem possuir uma lista estrita de slugs reservados (ex: `admin`, `api`, `assets`, `public`, `login`, `suporte`, `faq`) que não podem ser adotados por nenhum lojista, evitando que o cardápio de um cliente sobrescreva ou entre em conflito com rotas internas do SaaS.
-- **Estratégia de Cache da Infraestrutura:** Na migração para Next.js, a rota dinâmica do tenant `app/[slug]/page.tsx` deve ser configurada para permitir geração dinâmica sob demanda (usando `dynamicParams = true`). Isso garante que novos lojistas criados no banco tenham suas páginas geradas e cacheadas na CDN da Vercel imediatamente no primeiro acesso, sem exigir novos deploys do frontend e sem sobrecarregar a API na Railway.
-- Não criar backend C#/.NET ou código PostgreSQL neste repositório sem decisão explícita de monorepo. Esses serviços são externos ao MVP atual.
-- Reavaliar ou substituir o `vercel.json` quando o projeto deixar de ser servido como arquivos estáticos; não manter rewrites incompatíveis com o roteamento do Next.js.
-- Manter textos principais em pt-BR, HTML semântico, atributos ARIA, foco do modal e responsividade.
-- Preservar os tokens e padrões existentes em `assets/css/style.css`. Evitar estilos inline, duplicação e reformatação sem necessidade.
-- Ao alterar id, classe, atributo `data-*` ou seletor, atualizar todos os consumidores em HTML, CSS e JavaScript.
-- Fazer alterações pequenas e focadas. Não adicionar dependências ou ferramentas de build sem necessidade concreta.
-- Nunca alegar que leads foram enviados externamente enquanto o fluxo continuar usando apenas `localStorage`.
+- Faça alterações pequenas, leia os consumidores diretos e atualize rotas, links e estilos relacionados.
+- Preserve `apps/storefront` e `apps/admin` como fontes; não edite manualmente suas cópias geradas em `public/`.
+- Não copie segredos de `D:\delivery`, não versione `.env` e não coloque credenciais no código do navegador.
+- A URL do backend deve vir de configuração: `API_BASE_URL` para o storefront e `NEXT_PUBLIC_API_BASE_URL` para o painel Next.js. Produção exige HTTPS e CORS configurado no gateway e nas APIs.
+- Mantenha a lista `RESERVED_SLUGS` alinhada às rotas internas e valide slugs também no backend.
+- Mantenha slugs reservados consistentes entre `lib/tenant-hosts.ts` e `CatalogInputValidation`; nunca permita que um slug de loja sobrescreva uma rota interna.
+- Não altere `D:\delivery`; todas as escritas desta integração devem ficar neste repositório.
+- Não adicione serviços ou dependências fora do escopo sem decisão explícita.
 
-## Comandos
-
-No estado atual, use Node.js/npm:
+## Comandos e validação
 
 ```bash
-npm start
 npm run dev
+npm run build
+npm run dev:up
+npm run dev:down
+npm run dev:up:light
+dotnet test services/catalog-api.Tests/Catalog.Api.Tests.csproj
+dotnet test services/orders-api.Tests/Orders.Api.Tests.csproj
 ```
 
-Acesse `http://localhost:8082`. Os comandos usam `npx serve` e podem baixar o executável na primeira execução.
-
-Não invente `npm test`, `npm run build` ou `npm run lint`: esses scripts ainda não existem. Depois da migração para Next.js, adicione somente scripts realmente configurados, como `dev`, `build`, `start`, `lint` e testes.
-
-## Validação
-
-Após alterações no MVP atual:
-
-1. Rode `npm start` ou `npm run dev`.
-2. Verifique a landing em desktop e viewport estreito.
-3. Teste âncoras, menu mobile, modal, foco, validação do formulário, mensagem local de sucesso e contador quando afetados.
-4. Confirme no console que JavaScript, CSS e fontes carregam sem erros.
-5. Confira títulos, links, contraste, semântica e atributos de acessibilidade.
-
-Após a migração, acrescente validação de:
-
-- `/` como landing B2B;
-- `/{slug}` com tenant válido, slug inexistente, slug reservado e API indisponível;
-- criação de lead/tenant e prevenção de slug duplicado;
-- isolamento entre tenants;
-- painel autenticado;
-- integração em desktop, mobile e produção na Vercel/Railway.
-
-Não há testes automatizados neste repositório atualmente; a validação manual é o critério padrão até que testes sejam adicionados.
-
-## Processo para agentes
-
-Antes de editar, leia o arquivo diretamente relacionado ao comportamento solicitado e seus consumidores imediatos. Formule uma hipótese local sobre a causa ou comportamento esperado e escolha uma checagem barata que possa refutá-la.
-
-Depois da primeira edição, execute uma validação focada antes de ampliar a investigação ou alterar outra área. Não faça commit nem crie branch sem solicitação explícita.
-
-Ao finalizar, informe arquivos alterados, comportamento validado e limitações conhecidas. Diferencie sempre o que já está funcionando do que é arquitetura planejada.
+`npm run dev` inicia apenas o Next.js na porta 3000. O modo completo usa Docker/Compose e requer `.env`; copie `.env.example` e substitua os placeholders por valores locais próprios. O modo leve não valida pedidos. Antes de concluir alterações, valide o build ou o teste focado correspondente e informe limitações reais.

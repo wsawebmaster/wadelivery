@@ -1,0 +1,134 @@
+# Stack LOCAL / demo. Senhas aqui são intencionais para desenvolvimento.
+# Produção: use docker-compose.prod.example.yml + .env (nunca commitado).
+# Nenhum serviço reinicia automaticamente; inicie somente com `docker compose up`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: delivery-postgres
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-delivery}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: delivery_catalog
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-delivery} -d delivery_catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  catalog-api:
+    build:
+      context: .
+      dockerfile: services/catalog-api/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: delivery-catalog-api
+    restart: "no"
+    volumes:
+      - catalog_uploads:/app/wwwroot/uploads
+      - ./data:/app/data
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Persistence: PostgreSQL
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=delivery_catalog;Username=${POSTGRES_USER:-delivery};Password=${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD in .env}"
+      PublicApp__BaseUrl: ${PUBLIC_APP_BASE_URL:-http://localhost:3000}
+      Data__Root: /app/data
+      Cors__Origins__0: http://localhost:8080
+      Cors__Origins__1: http://127.0.0.1:8080
+      Cors__Origins__2: http://localhost:8081
+      Cors__Origins__3: http://127.0.0.1:8081
+      Cors__Origins__4: http://localhost:3000
+      Cors__Origins__5: http://127.0.0.1:3000
+      Jwt__Key: ${JWT_KEY:?Configure JWT_KEY in .env}
+      Admin__Username: ${ADMIN_USERNAME:-admin}
+      Admin__Password: ${ADMIN_PASSWORD:?Configure ADMIN_PASSWORD in .env}
+      Dev__Username: ${DEV_USERNAME:-dev}
+      Dev__Password: ${DEV_PASSWORD:?Configure DEV_PASSWORD in .env}
+      Atendimento__Username: ${ATENDIMENTO_USERNAME:-atendimento}
+      Atendimento__Password: ${ATENDIMENTO_PASSWORD:?Configure ATENDIMENTO_PASSWORD in .env}
+      Security__AllowInsecureDefaults: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  orders-api:
+    build:
+      context: .
+      dockerfile: services/orders-api/Dockerfile
+    container_name: delivery-orders-api
+    restart: "no"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=delivery_catalog;Username=${POSTGRES_USER:-delivery};Password=${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD in .env}"
+      RabbitMq__Enabled: "false"
+      Cors__Origins__0: http://localhost:8080
+      Cors__Origins__1: http://127.0.0.1:8080
+      Cors__Origins__2: http://localhost:8081
+      Cors__Origins__3: http://127.0.0.1:8081
+      Cors__Origins__4: http://localhost:3000
+      Cors__Origins__5: http://127.0.0.1:3000
+      Jwt__Key: ${JWT_KEY:?Configure JWT_KEY in .env}
+      Jwt__Issuer: delivery-catalog
+      Jwt__Audience: delivery-clients
+      CatalogApi__BaseUrl: http://catalog-api:8080
+      Security__AllowInsecureDefaults: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      catalog-api:
+        condition: service_started
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: delivery-gateway
+    restart: "no"
+    ports:
+      - "5100:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      CatalogApi__BaseUrl: http://catalog-api:8080
+      Cors__Origins__0: http://localhost:8080
+      Cors__Origins__1: http://127.0.0.1:8080
+      Cors__Origins__2: http://localhost:8081
+      Cors__Origins__3: http://127.0.0.1:8081
+      Cors__Origins__4: http://localhost:3000
+      Cors__Origins__5: http://127.0.0.1:3000
+    depends_on:
+      - catalog-api
+      - orders-api
+
+  # Fronts locais (só Docker Compose). Em produção usam Vercel — não afetam o remoto.
+  storefront:
+    image: nginx:alpine
+    container_name: delivery-storefront
+    restart: "no"
+    ports:
+      - "8080:80"
+    volumes:
+      - ./apps/storefront:/usr/share/nginx/html:ro
+      - ./infra/nginx/static.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - gateway
+
+  admin:
+    image: nginx:alpine
+    container_name: delivery-admin
+    restart: "no"
+    ports:
+      - "8081:80"
+    volumes:
+      - ./apps/admin:/usr/share/nginx/html:ro
+      - ./infra/nginx/static.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - gateway
+
+volumes:
+  postgres_data:
+  catalog_uploads:

@@ -1,0 +1,96 @@
+# Exemplo de stack enxuta para produção/demo online (PostgreSQL).
+# NÃO commite um .env com segredos reais.
+#
+#   cp .env.example .env
+#   # edite .env
+#   docker compose --env-file .env -f docker-compose.prod.example.yml up -d --build
+#
+# Expõe só o gateway. Postgres sem porta pública.
+# RabbitMQ e Jaeger ficam de fora para reduzir custo/superfície.
+# Os serviços não reiniciam automaticamente; uma subida exige comando manual.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-delivery}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: delivery_catalog
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-delivery} -d delivery_catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  catalog-api:
+    build:
+      context: .
+      dockerfile: services/catalog-api/Dockerfile
+    restart: "no"
+    volumes:
+      - catalog_uploads:/app/wwwroot/uploads
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Persistence: PostgreSQL
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=delivery_catalog;Username=${POSTGRES_USER:-delivery};Password=${POSTGRES_PASSWORD}
+      PublicApp__BaseUrl: ${PUBLIC_APP_BASE_URL:-https://wadelivery.com.br}
+      Data__Root: /app/data
+      Cors__Origins__0: ${CORS_ORIGIN_0:?set CORS_ORIGIN_0}
+      Cors__Origins__1: ${CORS_ORIGIN_1:-}
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY}
+      Admin__Username: ${ADMIN_USERNAME:?set ADMIN_USERNAME}
+      Admin__Password: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+      Dev__Username: ${DEV_USERNAME:-}
+      Dev__Password: ${DEV_PASSWORD:-}
+      Atendimento__Username: ${ATENDIMENTO_USERNAME:-}
+      Atendimento__Password: ${ATENDIMENTO_PASSWORD:-}
+      Security__AllowInsecureDefaults: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  orders-api:
+    build:
+      context: .
+      dockerfile: services/orders-api/Dockerfile
+    restart: "no"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=delivery_catalog;Username=${POSTGRES_USER:-delivery};Password=${POSTGRES_PASSWORD}
+      RabbitMq__Enabled: "false"
+      Cors__Origins__0: ${CORS_ORIGIN_0}
+      Cors__Origins__1: ${CORS_ORIGIN_1:-}
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: delivery-catalog
+      Jwt__Audience: delivery-clients
+      CatalogApi__BaseUrl: http://catalog-api:8080
+      Security__AllowInsecureDefaults: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      catalog-api:
+        condition: service_started
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    restart: "no"
+    ports:
+      - "${GATEWAY_PUBLISH_PORT:-5100}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      Cors__Origins__0: ${CORS_ORIGIN_0}
+      Cors__Origins__1: ${CORS_ORIGIN_1:-}
+    depends_on:
+      - catalog-api
+      - orders-api
+
+volumes:
+  postgres_prod_data:
+  # Volume obrigatório para uploads de imagem (logo, ícone e produtos) sobreviverem a redeploys.
+  catalog_uploads:

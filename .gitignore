@@ -1,12 +1,16 @@
 # dependencies
 node_modules/
 
+temp-fabin/
+
 # next.js
 .next/
 out/
 
 # production
 build/
+bin/
+obj/
 
 # misc
 .DS_Store
@@ -25,3 +29,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local runtime data and secrets
+data/backups/
+data/admin-users.json
+data/traffic-stats.json
+data/products-images/
+services/**/wwwroot/uploads/*
+!services/**/wwwroot/uploads/.gitkeep
+*.log

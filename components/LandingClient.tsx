@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { BackgroundOrbs } from '@/components/sections/BackgroundOrbs'
 import { Navbar } from '@/components/layout/Navbar'
 import { Hero } from '@/components/sections/Hero'
@@ -15,20 +14,11 @@ import { FAQ } from '@/components/sections/FAQ'
 import { FinalCTA } from '@/components/sections/FinalCTA'
 import { Footer } from '@/components/layout/Footer'
 
-const LeadForm = dynamic(
-  () => import('@/components/sections/LeadForm').then((mod) => ({ default: mod.LeadForm })),
-  { ssr: false }
-)
-
 export function LandingClient() {
-  const [leadOpen, setLeadOpen] = useState(false)
+  const router = useRouter()
 
   function openLead() {
-    setLeadOpen(true)
-  }
-
-  function closeLead() {
-    setLeadOpen(false)
+    router.push('/criar-loja')
   }
 
   return (
@@ -49,7 +39,6 @@ export function LandingClient() {
       </main>
 
       <Footer onOpenLead={openLead} />
-      <LeadForm open={leadOpen} onClose={closeLead} />
     </>
   )
 }

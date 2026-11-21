@@ -1,0 +1,488 @@
+.page {
+  min-height: 100vh;
+  padding: 48px 20px 72px;
+  background:
+    radial-gradient(ellipse at 12% 5%, rgba(31, 111, 235, .16), transparent 42%),
+    var(--bg);
+}
+
+.header,
+.panel {
+  width: min(100%, 900px);
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.header h1,
+.successPanel h1 {
+  margin: 8px 0 12px;
+  font-size: clamp(30px, 5vw, 44px);
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 28px;
+  color: var(--text-muted);
+}
+
+.backLink:hover {
+  color: var(--text);
+}
+
+.eyebrow {
+  color: var(--brand-light);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.panel {
+  padding: clamp(20px, 4vw, 36px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(14, 21, 38, .92);
+  box-shadow: var(--shadow-lg);
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 0 0 32px;
+  padding: 0;
+  list-style: none;
+}
+
+.stepper li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-faint);
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.stepper li span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.currentStep {
+  color: var(--text) !important;
+}
+
+.currentStep span,
+.completedStep span {
+  border-color: var(--brand) !important;
+  background: var(--brand);
+  color: white;
+}
+
+.panel h2 {
+  margin-bottom: 8px;
+  font-size: 1.4rem;
+}
+
+.formGrid,
+.optionGrid,
+.customColors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.formGrid label,
+.customColors label,
+.optionGrid label {
+  display: grid;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: .9rem;
+  font-weight: 650;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.formGrid input,
+.formGrid select,
+.optionGrid select,
+.customColors input:not([type="color"]) {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  outline: none;
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.formGrid input:focus,
+.formGrid select:focus,
+.optionGrid select:focus,
+.customColors input:focus {
+  border-color: var(--brand-light);
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, .18);
+}
+
+.formGrid small {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.paletteGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.palette {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-2);
+  color: var(--text);
+  text-align: left;
+}
+
+.palette:hover,
+.palette:focus-visible {
+  border-color: var(--brand-light);
+}
+
+.palette span {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.colorControl {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 8px;
+}
+
+.colorControl input[type="color"] {
+  width: 48px;
+  height: 44px;
+  padding: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--bg-2);
+}
+
+.previewWrap {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-2);
+}
+
+.previewHeading {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.productPreview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 600px;
+  padding: 14px;
+  border: 1px solid;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .14);
+}
+
+.productPreview p {
+  margin: 4px 0;
+  opacity: .75;
+  font-size: .84rem;
+}
+
+.productPreview button {
+  margin-left: auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.previewImage {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .08);
+  font-size: 2rem;
+}
+
+.previewBackground {
+  margin-top: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: .78rem;
+}
+
+.optionGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.uploadGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.uploadCard {
+  display: flex;
+  min-height: 180px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.uploadCard img {
+  width: 100%;
+  height: 110px;
+  object-fit: contain;
+}
+
+.uploadCard input {
+  width: 100%;
+  color: var(--text-faint);
+  font-size: .75rem;
+}
+
+.uploadPlaceholder {
+  display: grid;
+  width: 100%;
+  height: 110px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--bg-3);
+}
+
+.reviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.reviewGrid div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+
+.reviewGrid span {
+  color: var(--text-faint);
+  font-size: .76rem;
+}
+
+.reviewGrid strong {
+  color: var(--text);
+  font-size: .9rem;
+}
+
+.disclaimer,
+.warning {
+  margin-top: 18px;
+  color: var(--text-muted);
+  font-size: .86rem;
+}
+
+.warning {
+  color: #fbbf24;
+}
+
+.error {
+  margin-top: 20px;
+  padding: 10px 12px;
+  border: 1px solid rgba(248, 113, 113, .45);
+  border-radius: 10px;
+  background: rgba(248, 113, 113, .1);
+  color: #fecaca;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.primaryButton {
+  background: var(--grad-primary);
+  color: #fff;
+}
+
+.primaryButton:hover {
+  filter: brightness(1.08);
+}
+
+.primaryButton:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+.secondaryButton {
+  border-color: var(--border-strong);
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+.successPanel {
+  text-align: center;
+}
+
+.successIcon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(52, 211, 153, .15);
+  color: var(--success);
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.publicLink {
+  display: inline-block;
+  margin: 20px 0;
+  color: var(--brand-light);
+  font-size: 1.1rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.credentials {
+  margin: 16px auto 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-2);
+  text-align: left;
+}
+
+.credentials h2 {
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+
+.credentials p {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+
+.credentials code {
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: var(--bg-3);
+  color: var(--text);
+  user-select: all;
+}
+
+.credentials .secondaryButton {
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 28px 12px 48px;
+  }
+
+  .stepper li {
+    flex-direction: column;
+    gap: 4px;
+    font-size: .72rem;
+  }
+
+  .paletteGrid,
+  .uploadGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .formGrid,
+  .optionGrid,
+  .customColors,
+  .reviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fullWidth {
+    grid-column: auto;
+  }
+
+  .productPreview {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .productPreview button {
+    margin-left: auto;
+  }
+
+  .actions > button {
+    flex: 1;
+  }
+}

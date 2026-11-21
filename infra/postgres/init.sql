@@ -1,0 +1,2 @@
+-- Roda só na primeira criação do volume.
+-- POSTGRES_DB já cria delivery_catalog; ambos os serviços usam o mesmo DB.

@@ -1,0 +1,194 @@
+[
+    {
+        "id":  "2",
+        "name":  "Contra Filé Noa",
+        "sortOrder":  1,
+        "categoryId":  null
+    },
+    {
+        "id":  "1",
+        "name":  "Hamburguer",
+        "sortOrder":  2,
+        "categoryId":  "hamburguer"
+    },
+    {
+        "id":  "queijo",
+        "name":  "Queijo",
+        "sortOrder":  3,
+        "categoryId":  null
+    },
+    {
+        "id":  "alface",
+        "name":  "Alface",
+        "sortOrder":  4,
+        "categoryId":  null
+    },
+    {
+        "id":  "3",
+        "name":  "Ovo",
+        "sortOrder":  5,
+        "categoryId":  null
+    },
+    {
+        "id":  "4",
+        "name":  "Salsicha",
+        "sortOrder":  6,
+        "categoryId":  null
+    },
+    {
+        "id":  "5",
+        "name":  "Salada",
+        "sortOrder":  7,
+        "categoryId":  null
+    },
+    {
+        "id":  "6",
+        "name":  "Tomate",
+        "sortOrder":  8,
+        "categoryId":  null
+    },
+    {
+        "id":  "7",
+        "name":  "Cebola",
+        "sortOrder":  9,
+        "categoryId":  null
+    },
+    {
+        "id":  "8",
+        "name":  "Milho",
+        "sortOrder":  10,
+        "categoryId":  null
+    },
+    {
+        "id":  "9",
+        "name":  "Batata",
+        "sortOrder":  11,
+        "categoryId":  "2"
+    },
+    {
+        "id":  "10",
+        "name":  "Batata palha",
+        "sortOrder":  12,
+        "categoryId":  null
+    },
+    {
+        "id":  "11",
+        "name":  "Ketchup",
+        "sortOrder":  13,
+        "categoryId":  "especiais"
+    },
+    {
+        "id":  "12",
+        "name":  "Maionese",
+        "sortOrder":  14,
+        "categoryId":  "especiais"
+    },
+    {
+        "id":  "13",
+        "name":  "Mostarda",
+        "sortOrder":  15,
+        "categoryId":  "especiais"
+    },
+    {
+        "id":  "14",
+        "name":  "Molho especial",
+        "sortOrder":  16,
+        "categoryId":  "especiais"
+    },
+    {
+        "id":  "15",
+        "name":  "Bacon",
+        "sortOrder":  17,
+        "categoryId":  null
+    },
+    {
+        "id":  "16",
+        "name":  "Presunto",
+        "sortOrder":  18,
+        "categoryId":  null
+    },
+    {
+        "id":  "17",
+        "name":  "Molho",
+        "sortOrder":  19,
+        "categoryId":  "hot-dog"
+    },
+    {
+        "id":  "18",
+        "name":  "Purê",
+        "sortOrder":  20,
+        "categoryId":  "hot-dog"
+    },
+    {
+        "id":  "19",
+        "name":  "Óregano",
+        "sortOrder":  21,
+        "categoryId":  "hot-dog"
+    },
+    {
+        "id":  "20",
+        "name":  "Calabresa",
+        "sortOrder":  22,
+        "categoryId":  "hot-dog"
+    },
+    {
+        "id":  "21",
+        "name":  "Hamburguer de soja",
+        "sortOrder":  23,
+        "categoryId":  "vegetarianos"
+    },
+    {
+        "id":  "22",
+        "name":  "Rúcula",
+        "sortOrder":  24,
+        "categoryId":  "vegetarianos"
+    },
+    {
+        "id":  "23",
+        "name":  "Queijo em dobro",
+        "sortOrder":  25,
+        "categoryId":  "1"
+    },
+    {
+        "id":  "24",
+        "name":  "Batata frita",
+        "sortOrder":  26,
+        "categoryId":  "2"
+    },
+    {
+        "id":  "25",
+        "name":  "Contra Filé Noa Acebolado",
+        "sortOrder":  27,
+        "categoryId":  "2"
+    },
+    {
+        "id":  "26",
+        "name":  "Filé de Frango Acebolado",
+        "sortOrder":  28,
+        "categoryId":  "2"
+    },
+    {
+        "id":  "27",
+        "name":  "Calabresa Frita Acebolada",
+        "sortOrder":  29,
+        "categoryId":  "2"
+    },
+    {
+        "id":  "28",
+        "name":  "Hamburguer Gourmet",
+        "sortOrder":  30,
+        "categoryId":  "3"
+    },
+    {
+        "id":  "29",
+        "name":  "Linguiça",
+        "sortOrder":  31,
+        "categoryId":  "4"
+    },
+    {
+        "id":  "30",
+        "name":  "Frango",
+        "sortOrder":  32,
+        "categoryId":  "5"
+    }
+]

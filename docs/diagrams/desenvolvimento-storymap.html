@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fabin Lanches — estado do desenvolvimento · Story map</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600&family=Inter:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&family=Noto+Sans+TC:wght@400;500;600&family=Noto+Serif+TC:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f8fafc;
+      --color-ink:     #1e293b;
+      --color-muted:   #475569;
+      --color-accent:  #ffb020;
+      --font-sans:     'Inter', system-ui, sans-serif;
+      --font-serif:    'Sora', 'Instrument Serif', sans-serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1320px; width: 100%; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 1140px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Story map · Estado do desenvolvimento</p>
+    <h1>Fabin Lanches — desenvolvimento até aqui</h1>
+
+    <svg viewBox="0 0 1240 592" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="desenvolvimento-storymap-title desenvolvimento-storymap-desc">
+      <title id="desenvolvimento-storymap-title">Fabin Lanches — desenvolvimento até aqui · Story map</title>
+      <desc id="desenvolvimento-storymap-desc">Story map do desenvolvimento da plataforma de delivery Fabin Lanches, na persona da operação da loja: cinco atividades em ordem narrativa (preparar a loja, receber pedidos, operar a cozinha, servir no local, fechar e evoluir), com passos de operação de cada uma e três faixas de entrega já concluídas (MVP, expansão e plataforma) cortadas pela linha de release logo abaixo do MVP; o consumo local por QR é assinalado como o card de maior risco.</desc>
+      <defs>
+        <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="0.9" fill="rgba(30,41,59,0.10)"/>
+        </pattern>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f8fafc"/>
+
+      <!-- Release slice bands (alternating ink @ 0.02 / none) -->
+      <rect x="32" y="216" width="1176" height="80" fill="rgba(30,41,59,0.02)"/>
+      <rect x="32" y="424" width="1176" height="80" fill="rgba(30,41,59,0.02)"/>
+
+      <text x="48" y="260" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">MVP</text>
+      <text x="48" y="356" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">EXPANSÃO</text>
+      <text x="48" y="468" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">PLATAFORMA</text>
+
+      <!-- Column separators: tie each card row to its activity column -->
+      <line x1="116" y1="108" x2="116" y2="504" stroke="rgba(15,23,42,0.10)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <line x1="340" y1="108" x2="340" y2="504" stroke="rgba(15,23,42,0.10)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <line x1="564" y1="108" x2="564" y2="504" stroke="rgba(15,23,42,0.10)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <line x1="788" y1="108" x2="788" y2="504" stroke="rgba(15,23,42,0.10)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <line x1="1012" y1="108" x2="1012" y2="504" stroke="rgba(15,23,42,0.10)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <line x1="1236" y1="108" x2="1236" y2="504" stroke="rgba(15,23,42,0.10)" stroke-width="0.8" stroke-dasharray="4,4"/>
+
+      <!-- Backbone: 5 activities, narrative left-to-right order -->
+      <rect x="128" y="40" width="200" height="64" rx="6" fill="rgba(30,41,59,0.05)" stroke="#475569" stroke-width="1"/>
+      <text x="228" y="68" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Preparar a loja</text>
+      <text x="228" y="88" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">ACTIVITY 1</text>
+
+      <rect x="352" y="40" width="200" height="64" rx="6" fill="rgba(30,41,59,0.05)" stroke="#475569" stroke-width="1"/>
+      <text x="452" y="68" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Receber pedidos</text>
+      <text x="452" y="88" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">ACTIVITY 2</text>
+
+      <rect x="576" y="40" width="200" height="64" rx="6" fill="rgba(30,41,59,0.05)" stroke="#475569" stroke-width="1"/>
+      <text x="676" y="68" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Operar a cozinha</text>
+      <text x="676" y="88" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">ACTIVITY 3</text>
+
+      <rect x="800" y="40" width="200" height="64" rx="6" fill="rgba(30,41,59,0.05)" stroke="#475569" stroke-width="1"/>
+      <text x="900" y="68" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Servir no local</text>
+      <text x="900" y="88" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">ACTIVITY 4</text>
+
+      <rect x="1024" y="40" width="200" height="64" rx="6" fill="rgba(30,41,59,0.05)" stroke="#475569" stroke-width="1"/>
+      <text x="1124" y="68" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif" text-anchor="middle">Fechar &amp; evoluir</text>
+      <text x="1124" y="88" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">ACTIVITY 5</text>
+
+      <!-- Walking skeleton: user steps under each activity -->
+      <rect x="144" y="120" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="156" y="140" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Cadastrar catálogo</text>
+      <rect x="144" y="160" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="156" y="180" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Horários e frete</text>
+
+      <rect x="368" y="120" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="380" y="140" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Checkout online</text>
+      <rect x="368" y="160" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="380" y="180" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Acompanhar pedido</text>
+
+      <rect x="592" y="120" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="604" y="140" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Mudar status</text>
+      <rect x="592" y="160" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="604" y="180" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Alertas de atraso</text>
+
+      <rect x="816" y="120" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="828" y="140" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Pedido QR / garçom</text>
+      <rect x="816" y="160" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="828" y="180" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Comanda e conta</text>
+
+      <rect x="1040" y="120" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="1052" y="140" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Fechar mesa</text>
+      <rect x="1040" y="160" width="168" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="0.8"/>
+      <text x="1052" y="180" fill="#1e293b" font-size="12" font-family="'Inter', sans-serif">Gerir lojas e equipe</text>
+
+      <!-- MVP row story cards -->
+      <rect x="144" y="232" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="156" y="250" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Catálogo e config.</text>
+      <text x="156" y="266" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">categorias · produtos</text>
+
+      <rect x="368" y="232" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="380" y="250" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Checkout + frete</text>
+      <text x="380" y="266" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">delivery · pickup · Pix</text>
+
+      <rect x="592" y="232" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="604" y="250" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Pedidos em tempo real</text>
+      <text x="604" y="266" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">SSE · SLA · cupom</text>
+
+      <rect x="1040" y="232" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="1052" y="250" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Baixa de pagamento</text>
+      <text x="1052" y="266" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">status · timing</text>
+
+      <!-- Release cut line — accent element 1 -->
+      <line x1="32" y1="296" x2="1208" y2="296" stroke="#ffb020" stroke-width="1.5"/>
+      <rect x="1100" y="280" width="96" height="8" rx="2" fill="#f8fafc"/>
+      <text x="1148" y="285" fill="#ffb020" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.10em">RELEASE CUT</text>
+
+      <!-- Expansão row story cards -->
+      <rect x="368" y="328" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="380" y="346" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Horário por dia</text>
+      <text x="380" y="362" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">pausa · madrugada</text>
+
+      <rect x="592" y="328" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="604" y="346" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Lojas da plataforma</text>
+      <text x="604" y="362" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">multi-tenant · RLS</text>
+
+      <!-- Riskiest story — accent element 2 -->
+      <rect x="816" y="328" width="168" height="48" rx="4" fill="rgba(255,176,32,0.12)" stroke="#ffb020" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="828" y="346" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Consumo local QR/mesas</text>
+      <text x="828" y="362" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">flags · sessões</text>
+      <rect x="936" y="352" width="40" height="12" rx="2" fill="transparent" stroke="#ffb020" stroke-width="0.8"/>
+      <text x="956" y="360" fill="#ffb020" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RISK</text>
+
+      <rect x="1040" y="328" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="1052" y="346" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Equipe + papel Garçom</text>
+      <text x="1052" y="362" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">PIN · papéis · staff</text>
+
+      <!-- Plataforma row story cards -->
+      <rect x="368" y="440" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="380" y="458" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Idempotência + tamanho</text>
+      <text x="380" y="474" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">ClientRequestId · Méd/Int</text>
+
+      <rect x="592" y="440" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="604" y="458" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Impressão ESC/POS</text>
+      <text x="604" y="474" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">WebUSB · serial</text>
+
+      <rect x="816" y="440" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="828" y="458" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Fechar mesa + divisão</text>
+      <text x="828" y="474" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">gorjeta · conta · recibo</text>
+
+      <rect x="1040" y="440" width="168" height="48" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="1052" y="458" fill="#1e293b" font-size="12" font-weight="600" font-family="'Inter', sans-serif">Tools e estatísticas</text>
+      <text x="1052" y="474" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">backup · sync · stats</text>
+
+      <!-- Legend -->
+      <line x1="32" y1="536" x2="1208" y2="536" stroke="rgba(15,23,42,0.10)" stroke-width="0.8"/>
+      <text x="32" y="552" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+
+      <rect x="32" y="564" width="16" height="8" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+      <text x="56" y="572" fill="#475569" font-size="12" font-family="'Inter', sans-serif">Story card</text>
+
+      <rect x="188" y="564" width="16" height="8" fill="rgba(255,176,32,0.12)" stroke="#ffb020" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="212" y="572" fill="#475569" font-size="12" font-family="'Inter', sans-serif">Maior risco</text>
+
+      <line x1="340" y1="568" x2="372" y2="568" stroke="#ffb020" stroke-width="1.5"/>
+      <text x="388" y="572" fill="#475569" font-size="12" font-family="'Inter', sans-serif">Release cut</text>
+    </svg>
+  </div>
+</body>
+</html>

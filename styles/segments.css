@@ -1,0 +1,130 @@
+/* ============================================
+   Segment Themes × Light/Dark Appearance
+   Live site colors as base + dark override
+   ============================================ */
+
+/* === Segment Tokens === */
+
+[data-segment="lanchonete"] {
+  --seg-primary: #1f6feb;
+  --seg-primary-dark: #1558c7;
+  --seg-primary-rgb: 31, 111, 235;
+  --seg-accent: #3498db;
+  --seg-font: 'Roboto', sans-serif;
+  --seg-radius: 8px;
+}
+
+[data-segment="hamburgueria"] {
+  --seg-primary: #dc2626;
+  --seg-primary-dark: #b91c1c;
+  --seg-primary-rgb: 220, 38, 38;
+  --seg-accent: #f59e0b;
+  --seg-font: 'Inter', sans-serif;
+  --seg-radius: 10px;
+}
+
+[data-segment="pizzaria"] {
+  --seg-primary: #ea580c;
+  --seg-primary-dark: #c2410c;
+  --seg-primary-rgb: 234, 88, 12;
+  --seg-accent: #16a34a;
+  --seg-font: 'Poppins', sans-serif;
+  --seg-radius: 12px;
+}
+
+[data-segment="marmitaria"] {
+  --seg-primary: #16a34a;
+  --seg-primary-dark: #15803d;
+  --seg-primary-rgb: 22, 163, 74;
+  --seg-accent: #f97316;
+  --seg-font: 'Nunito', sans-serif;
+  --seg-radius: 8px;
+}
+
+/* === Light Theme (matches live site exactly) === */
+
+[data-theme="light"] {
+  --menu-bg: #f3f4f6;
+  --menu-card: #ffffff;
+  --menu-card-hover: #f8fafc;
+  --menu-text: #2c3e50;
+  --menu-text-muted: #5b6470;
+  --menu-border: #e2e8f0;
+  --menu-header-bg: var(--seg-primary);
+  --menu-header-text: var(--cor-branco-azulado, #dee6ff);
+  --menu-category-bg: linear-gradient(180deg, #ffffff, #f1f6ff);
+  --menu-category-border: #d6e4ff;
+  --menu-category-text: var(--seg-primary);
+  --menu-category-active-bg: linear-gradient(180deg, var(--seg-primary), var(--seg-primary-dark));
+  --menu-category-active-text: #ffffff;
+  --menu-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  --menu-shadow-hover: 0 14px 30px rgba(21, 88, 199, 0.14);
+  --menu-overlay: rgba(0, 0, 0, 0.7);
+  --menu-modal-bg: #ffffff;
+  --menu-input-bg: #ffffff;
+  --menu-input-border: #ccc;
+  --menu-input-focus: var(--seg-primary);
+  --menu-success: #2ecc71;
+  --menu-success-bg: linear-gradient(180deg, #e9f8ef, #f6fff9);
+  --menu-success-border: #c8e6cc;
+  --menu-error: #e74c3c;
+  --menu-error-hover: #c0392b;
+  --menu-eta-bg: #3d3d3d;
+  --menu-eta-text: #ffffff;
+  --menu-btn-secondary-bg: #ffffff;
+  --menu-btn-secondary-text: var(--seg-primary);
+  --menu-btn-secondary-border: #d6e4ff;
+  --menu-btn-secondary-hover-bg: #eef5ff;
+  --menu-bottom-bar-bg: #ffffff;
+  --menu-bottom-bar-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
+  --menu-cart-btn-bg: #3498db;
+  --menu-cart-btn-hover: #2980b9;
+  --menu-step-inactive-bg: #c5c9ce;
+  --menu-step-active-bg: #1f8f4e;
+  --menu-step-active-label-bg: #e8f7ee;
+  --menu-step-active-label-text: #146c3a;
+}
+
+/* === Dark Theme === */
+
+[data-theme="dark"] {
+  --menu-bg: #0a0f1e;
+  --menu-card: #16213e;
+  --menu-card-hover: #1c2a4a;
+  --menu-text: #e2e8f0;
+  --menu-text-muted: #94a3b8;
+  --menu-border: #1e293b;
+  --menu-header-bg: var(--seg-primary-dark);
+  --menu-header-text: #ffffff;
+  --menu-category-bg: linear-gradient(180deg, #1e293b, #162032);
+  --menu-category-border: #334155;
+  --menu-category-text: var(--seg-accent);
+  --menu-category-active-bg: linear-gradient(180deg, var(--seg-primary), var(--seg-primary-dark));
+  --menu-category-active-text: #ffffff;
+  --menu-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  --menu-shadow-hover: 0 14px 30px rgba(0, 0, 0, 0.4);
+  --menu-overlay: rgba(0, 0, 0, 0.8);
+  --menu-modal-bg: #16213e;
+  --menu-input-bg: #1e293b;
+  --menu-input-border: #334155;
+  --menu-input-focus: var(--seg-primary);
+  --menu-success: #2ecc71;
+  --menu-success-bg: linear-gradient(180deg, #0d2818, #0a1f14);
+  --menu-success-border: #166534;
+  --menu-error: #e74c3c;
+  --menu-error-hover: #c0392b;
+  --menu-eta-bg: #1e293b;
+  --menu-eta-text: #e2e8f0;
+  --menu-btn-secondary-bg: #1e293b;
+  --menu-btn-secondary-text: var(--seg-accent);
+  --menu-btn-secondary-border: #334155;
+  --menu-btn-secondary-hover-bg: #253349;
+  --menu-bottom-bar-bg: #16213e;
+  --menu-bottom-bar-shadow: 0 -2px 12px rgba(0, 0, 0, 0.4);
+  --menu-cart-btn-bg: var(--seg-primary);
+  --menu-cart-btn-hover: var(--seg-primary-dark);
+  --menu-step-inactive-bg: #334155;
+  --menu-step-active-bg: var(--seg-primary);
+  --menu-step-active-label-bg: #0d2818;
+  --menu-step-active-label-text: #4ade80;
+}

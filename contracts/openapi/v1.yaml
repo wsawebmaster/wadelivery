@@ -1,0 +1,381 @@
+openapi: 3.0.3
+info:
+  title: Delivery Platform API
+  version: 1.0.0
+  description: Contrato público do cardápio delivery (via Gateway).
+servers:
+  - url: http://localhost:5100
+paths:
+  /api/v1/health:
+    get:
+      summary: Health do gateway
+      responses:
+        "200":
+          description: OK
+  /api/v1/store:
+    get:
+      summary: Configuração pública da loja
+      responses:
+        "200":
+          description: Store config
+  /api/v1/catalog:
+    get:
+      summary: Catálogo público (apenas itens disponíveis)
+      responses:
+        "200":
+          description: Categories and products
+  /api/v1/auth/login:
+    post:
+      summary: Login admin (JWT)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: Token JWT
+        "401":
+          description: Credenciais inválidas
+  /api/v1/orders:
+    post:
+      summary: Criar pedido (persiste + publica OrderCreated)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrder"
+      responses:
+        "201":
+          description: Pedido criado (retorna AccessToken p/ acompanhamento)
+        "400":
+          description: Dados inválidos (ex.: QR Code inválido, mesa inativa)
+        "401":
+          description: Requer autenticação (pedido de garçom)
+        "409":
+          description: Recurso desabilitado (dine_in desabilitado, origem não permitida)
+  /api/v1/tables/resolve/{accessCode}:
+    get:
+      summary: Resolver QR Code de mesa (público, retorna dados mínimos)
+      parameters:
+        - name: accessCode
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Mesa resolvida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolveTableResponse"
+        "404":
+          description: Mesa não encontrada
+  /api/v1/admin/tables:
+    get:
+      summary: Listar mesas da loja (Admin/Atendimento)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Lista de mesas
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+    post:
+      summary: Criar mesa (Admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTable"
+      responses:
+        "201":
+          description: Mesa criada
+        "400":
+          description: Dados inválidos
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+  /api/v1/admin/tables/{id}:
+    put:
+      summary: Atualizar mesa (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTable"
+      responses:
+        "200":
+          description: Mesa atualizada
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+        "404":
+          description: Mesa não encontrada
+    delete:
+      summary: Excluir mesa (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Mesa excluída
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+        "404":
+          description: Mesa não encontrada
+        "409":
+          description: Mesa com pedidos abertos
+  /api/v1/admin/tables/{id}/active:
+    patch:
+      summary: Alternar ativo/inativo da mesa (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Estado alternado
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+        "404":
+          description: Mesa não encontrada
+  /api/v1/admin/store:
+    patch:
+      summary: Atualizar loja (Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Store atualizada
+        "400":
+          description: Dados inválidos
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+  /api/v1/admin/staff:
+    get:
+      summary: Listar garçons/usuários da loja (Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Lista de usuários (StoreUserDto, sem PIN em claro)
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão (apenas Admin)
+    post:
+      summary: Criar garçom/usuário da loja (Admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStoreUser"
+      responses:
+        "201":
+          description: Usuário criado
+        "400":
+          description: Dados inválidos
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão (apenas Admin)
+        "409":
+          description: Usuário já existe
+  /api/v1/admin/staff/{userId}:
+    delete:
+      summary: Excluir garçom/usuário da loja (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Usuário excluído
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+        "404":
+          description: Usuário não encontrado
+  /api/v1/admin/staff/{userId}/reset-password:
+    post:
+      summary: Redefinir senha de um garçom (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+      responses:
+        "200":
+          description: Senha atualizada
+        "400":
+          description: Senha muito curta
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+        "404":
+          description: Usuário não encontrado
+  /api/v1/admin/staff/{userId}/pin:
+    post:
+      summary: Definir/alterar PIN de 4 dígitos de um garçom (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin]
+              properties:
+                pin: { type: string, pattern: "^[0-9]{4}$" }
+      responses:
+        "200":
+          description: PIN definido
+        "400":
+          description: PIN inválido (deve ter 4 dígitos)
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+        "404":
+          description: Usuário não encontrado
+    delete:
+      summary: Limpar PIN de um garçom (Admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: PIN removido
+        "401":
+          description: Não autenticado
+        "403":
+          description: Sem permissão
+        "404":
+          description: Usuário não encontrado
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreateOrder:
+      type: object
+      required: [customerName, customerPhone, address, paymentMethod, deliveryFee, items]
+      properties:
+        orderId: { type: string }
+        customerName: { type: string }
+        customerPhone: { type: string }
+        address: { type: string }
+        reference: { type: string }
+        paymentMethod: { type: string }
+        notes: { type: string }
+        deliveryFee: { type: number }
+        fulfillmentType:
+          type: string
+          description: delivery (padrão) | pickup | dine_in
+          enum: [delivery, pickup, dine_in]
+        tableAccessCode:
+          type: string
+          description: Código opaco da mesa — usado SOMENTE para pedido do cliente via QR Code. Não substitui o AccessToken de acompanhamento.
+        tableId:
+          type: integer
+          description: ID da mesa — usado pelo garçom via painel autenticado (fonte de verdade é o JWT).
+        orderSource:
+          type: string
+          description: customer_qr | waiter_panel | admin_panel
+          enum: [customer_qr, waiter_panel, admin_panel]
+        waiterName:
+          type: string
+          description: Snapshot do nome do garçom (não confiável; fonte é o JWT)
+        diningSessionId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              price: { type: number }
+              quantity: { type: integer }
+    ResolveTableResponse:
+      type: object
+      properties:
+        tableId: { type: integer }
+        tableLabel: { type: string }
+        storeId: { type: integer }
+        active: { type: boolean }
+        allowCustomerOrder: { type: boolean }
+      description: Dados públicos (não retorna AccessCode, usuários nem sessões)
+    CreateTable:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string }
+        allowCustomerOrder: { type: boolean, default: true }
+        capacity: { type: integer }
+    UpdateTable:
+      type: object
+      properties:
+        label: { type: string }
+        allowCustomerOrder: { type: boolean }
+        capacity: { type: integer }
+    CreateStoreUser:
+      type: object
+      required: [username, password, role]
+      properties:
+        username: { type: string, pattern: "^[a-zA-Z0-9][a-zA-Z0-9_-]*$" }
+        password: { type: string, minLength: 6 }
+        role: { type: string, enum: [Admin, Atendimento] }

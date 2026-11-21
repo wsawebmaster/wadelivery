@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Fabin Lanches</title>
+  <link rel="stylesheet" href="styles.css?v=129" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%94%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=3" />
+</head>
+<body>
+  <div id="loginView" class="panel">
+    <h1>Painel Admin</h1>
+    <p class="muted">Acesse com perfil de atendimento ou desenvolvedor.</p>
+    <label>Usuário</label>
+    <input id="username" type="text" value="" autocomplete="username" placeholder="Usuário" />
+    <label>Senha</label>
+    <input id="password" type="password" value="" autocomplete="current-password" placeholder="Senha" />
+    <button id="loginBtn" type="button">Entrar</button>
+    <p id="loginError" class="error" hidden></p>
+  </div>
+
+  <div id="appView" hidden>
+    <header class="topbar">
+      <div class="topbar-left">
+        <button type="button" id="sidebarToggleBtn" class="ghost compact topbar-toggle" aria-label="Abrir menu" title="Abrir menu">☰</button>
+        <strong class="topbar-store" id="topbarStoreTitle">Loja</strong>
+      </div>
+      <div class="topbar-channels" id="topbarChannels" hidden>
+        <button type="button" class="channel-btn" data-channel="balcao" title="Novo pedido de Balcão (retirada no balcão)">
+          <span class="channel-icon" aria-hidden="true">🛒</span><span class="channel-label">Balcão</span>
+        </button>
+        <button type="button" class="channel-btn" data-channel="delivery" title="Novo pedido de Delivery pelo cardápio">
+          <span class="channel-icon" aria-hidden="true">🛵</span><span class="channel-label">Delivery</span>
+        </button>
+        <button type="button" class="channel-btn" data-channel="mesas" title="Pedido de mesa (consumo no local)">
+          <span class="channel-icon" aria-hidden="true">🪑</span><span class="channel-label">Mesas</span>
+        </button>
+        <button type="button" class="channel-btn" data-channel="telefone" title="Novo pedido recebido por Telefone">
+          <span class="channel-icon" aria-hidden="true">📞</span><span class="channel-label">Telefone</span>
+        </button>
+      </div>
+      <div class="user-menu" id="userMenu">
+        <button type="button" id="userMenuBtn" class="user-menu-btn" aria-haspopup="true" aria-expanded="false" title="Conta do usuário">
+          <span class="user-avatar" id="userAvatar" hidden>?</span>
+          <span class="user-menu-name" id="userMenuName">Conta</span>
+          <span class="user-role-badge" id="topbarRoleBadge" hidden></span>
+          <span class="user-menu-chev" aria-hidden="true">▾</span>
+        </button>
+        <div class="user-dropdown" id="userDropdown" hidden>
+          <div class="user-dropdown-head">
+            <strong id="dropdownDisplayName">Conta</strong>
+            <small id="dropdownUsername" class="muted"></small>
+          </div>
+          <button type="button" data-user-action="store" data-admin-only hidden><span aria-hidden="true">🏪</span> Configurações da loja</button>
+          <button type="button" data-user-action="logout"><span aria-hidden="true">🚪</span> Sair</button>
+          <hr />
+          <div id="profileSwitcher" class="user-dropdown-profile" hidden>
+            <div class="user-dropdown-label">Alternar perfil</div>
+            <button type="button" data-switch-to="admin" hidden><span aria-hidden="true">👁️</span> Ver como Admin</button>
+            <button type="button" data-switch-to="atendimento" hidden><span aria-hidden="true">👁️</span> Ver como Atendimento</button>
+            <button type="button" id="profileSwitcherBack" hidden><span aria-hidden="true">↩️</span> Voltar para dev</button>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="layout">
+    <aside>
+      <button type="button" id="drawerCloseBtn" class="ghost compact drawer-close" aria-label="Fechar menu" title="Fechar menu">✕ Fechar</button>
+      <div class="aside-logo" aria-hidden="true">🍔</div>
+      <p id="userBadge" class="user-badge" hidden></p>
+      <nav>
+        <button type="button" data-tab="dashboard" data-admin-only hidden><span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">Dashboard</span></button>
+        <button type="button" data-tab="platform" data-platform-only hidden><span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">Dashboard</span></button>
+        <button type="button" data-tab="orders" data-orders-only class="active"><span class="nav-icon" aria-hidden="true">🧾</span><span class="nav-label">Pedidos</span></button>
+        <button type="button" data-tab="store" data-admin-only hidden><span class="nav-icon" aria-hidden="true">🏪</span><span class="nav-label">Loja</span></button>
+        <button type="button" data-tab="categories" data-admin-only hidden><span class="nav-icon" aria-hidden="true">🗂️</span><span class="nav-label">Categorias</span></button>
+        <button type="button" data-tab="ingredients" data-admin-only hidden><span class="nav-icon" aria-hidden="true">🥬</span><span class="nav-label">Ingredientes</span></button>
+        <button type="button" data-tab="opcionais" data-admin-only hidden><span class="nav-icon" aria-hidden="true">➕</span><span class="nav-label">Opcionais</span></button>
+        <button type="button" data-tab="products" data-admin-only hidden><span class="nav-icon" aria-hidden="true">🍔</span><span class="nav-label">Produtos</span></button>
+        <button type="button" data-tab="team" data-admin-only hidden><span class="nav-icon" aria-hidden="true">👥</span><span class="nav-label">Equipe</span></button>
+        <button type="button" data-tab="lojas" data-platform-only hidden><span class="nav-icon" aria-hidden="true">🏬</span><span class="nav-label">Lojas</span></button>
+        <button type="button" data-tab="systems" data-platform-only hidden><span class="nav-icon" aria-hidden="true">⚙️</span><span class="nav-label">Sistemas</span></button>
+        <button type="button" data-tab="bank" data-platform-only hidden><span class="nav-icon" aria-hidden="true">🏦</span><span class="nav-label">Banco</span></button>
+      </nav>
+      <button type="button" id="sidebarCollapseBtn" class="ghost sidebar-collapse" aria-label="Reduzir menu lateral" title="Reduzir menu lateral">«</button>
+      <button id="logoutBtn" type="button" class="ghost">Sair</button>
+    </aside>
+    <main>
+      <section id="tab-dashboard" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Dashboard</h3>
+            <p class="muted">Resumo de vendas, produtos e operação.</p>
+          </div>
+          <div class="orders-header-actions">
+            <select id="dashboardDays" class="compact-select" aria-label="Período do dashboard">
+              <option value="today" selected>Hoje</option>
+              <option value="yesterday">Ontem</option>
+              <option value="7">7 dias</option>
+              <option value="15">15 dias</option>
+              <option value="30">30 dias</option>
+              <option value="90">90 dias</option>
+            </select>
+            <button type="button" id="refreshDashboardBtn" class="ghost compact">Atualizar</button>
+            <div class="export-menu" id="dashboardExportMenu">
+              <button type="button" id="exportDashboardBtn" class="ghost compact" aria-haspopup="true" aria-expanded="false">Exportar</button>
+              <div class="export-menu-dropdown" id="dashboardExportOptions" hidden>
+                <button type="button" data-export="csv">Baixar CSV</button>
+                <button type="button" data-export="pdf">Salvar como PDF</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="dashKpis" class="dash-kpis"></div>
+        <div class="dash-grid">
+          <article class="dash-card">
+            <h4>Vendas por dia</h4>
+            <canvas id="chartDaily" height="160"></canvas>
+          </article>
+          <article class="dash-card">
+            <h4>Pedidos por status</h4>
+            <canvas id="chartStatus" height="160"></canvas>
+          </article>
+          <article class="dash-card">
+            <h4>Lanches mais vendidos</h4>
+            <canvas id="chartProducts" height="200"></canvas>
+          </article>
+          <article class="dash-card">
+            <h4>Formas de pagamento</h4>
+            <canvas id="chartPayment" height="160"></canvas>
+          </article>
+          <article class="dash-card" id="dashFulfillmentCard" hidden>
+            <h4>Entrega × Retirada</h4>
+            <canvas id="chartFulfillment" height="160"></canvas>
+          </article>
+          <article class="dash-card">
+            <h4>Bairros com mais pedidos</h4>
+            <canvas id="chartNeighborhood" height="160"></canvas>
+          </article>
+          <article class="dash-card" id="dashCancelReasonsCard" hidden>
+            <h4>Principais motivos de cancelamento</h4>
+            <canvas id="chartCancelReasons" height="180"></canvas>
+          </article>
+          <article class="dash-card">
+            <h4>Ranking de produtos</h4>
+            <div id="dashTopProducts" class="dash-table-wrap"></div>
+          </article>
+        </div>
+        <p id="dashMeta" class="muted orders-meta"></p>
+      </section>
+
+      <section id="tab-orders" class="tab">
+        <div class="orders-header">
+          <div>
+            <h3>Pedidos</h3>
+            <p class="muted">Atualiza automaticamente a cada poucos segundos.</p>
+          </div>
+          <div class="orders-header-actions">
+            <span id="ordersLiveBadge" class="live-badge">Online</span>
+            <button type="button" id="newTableOrderBtn" class="primary compact" title="Criar pedido de consumo no local para uma mesa">+ Pedido de mesa</button>
+            <button type="button" id="snoozeAlertsBtn" class="ghost compact" title="Silencia sons de alerta por 2 minutos">Silenciar 2 min</button>
+            <button type="button" id="enableNotifyBtn" class="ghost compact" title="Permite notificações do sistema com a aba em segundo plano">Notificações</button>
+            <button type="button" id="refreshOrdersBtn" class="ghost compact">Atualizar</button>
+          </div>
+        </div>
+        <p id="alertsMuteStatus" class="muted orders-meta" hidden></p>
+        <div class="order-filters" id="orderFilters">
+          <button type="button" data-order-filter="Created" class="active">Aguardando Confirmação</button>
+          <button type="button" data-order-filter="Accepted">Confirmado</button>
+          <button type="button" data-order-filter="Preparing">Em preparação</button>
+          <button type="button" data-order-filter="OutForDelivery">Saiu para entrega</button>
+          <button type="button" data-order-filter="ReadyForPickup">Disponível para retirada</button>
+          <button type="button" data-order-filter="ReadyForTable">Disponível para mesa</button>
+          <button type="button" data-order-filter="deliveredDineIn">Entregue na mesa</button>
+          <button type="button" data-order-filter="overdue">Em atraso</button>
+          <button type="button" data-order-filter="Delivered">Finalizado</button>
+          <button type="button" data-order-filter="Cancelled">Cancelado</button>
+          <button type="button" data-order-filter="all">Total</button>
+        </div>
+        <div class="order-fulfillment-filters" id="orderFulfillmentFilters">
+          <span class="fulfillment-filter-label">Tipo:</span>
+          <button type="button" data-fulfillment-filter="all" class="active">Todos</button>
+          <button type="button" data-fulfillment-filter="delivery">Delivery</button>
+          <button type="button" data-fulfillment-filter="pickup">Retirada</button>
+          <button type="button" data-fulfillment-filter="dine_in">Mesa</button>
+        </div>
+        <p id="ordersMeta" class="muted orders-meta"></p>
+        <p class="muted orders-meta orders-hotkeys-hint">Atalho: <kbd>Enter</kbd> confirma o primeiro pedido em Aguardando (com a aba Pedidos aberta).</p>
+        <div id="ordersBoard" class="orders-board"></div>
+      </section>
+
+      <section id="tab-mesas" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Mesas</h3>
+            <p class="muted">Grade de mesas (mesmo visual do cardápio do garçom). Clique numa mesa para abrir o cardápio dela (verde = livre, vermelho = ocupada). Use "Comanda" para gerenciar os pedidos e "Novo pedido" para abrir o cardápio autenticado.</p>
+          </div>
+          <div class="orders-header-actions">
+            <span id="mesasDineInBadge" class="live-badge" hidden>Dine-in desativado</span>
+            <button type="button" id="newTableBtn" class="primary compact">+ Nova mesa</button>
+            <button type="button" id="refreshTablesBtn" class="ghost compact">Atualizar</button>
+          </div>
+        </div>
+        <p id="tablesMeta" class="muted orders-meta"></p>
+        <div class="tables-legend">
+          <span class="legend-item"><i class="legend-dot is-free"></i>Livre</span>
+          <span class="legend-item"><i class="legend-dot is-occupied"></i>Ocupada</span>
+          <span class="legend-item"><i class="legend-dot is-inactive"></i>Inativa</span>
+        </div>
+        <div id="tablesGrid" class="tables-grid"></div>
+      </section>
+
+      <section id="tab-team" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Equipe</h3>
+            <p class="muted">Gerencie os garçons da loja e o PIN de cada um para ações no consumo local. O cadastro aqui é restrito ao papel Garçom.</p>
+          </div>
+          <div class="orders-header-actions">
+            <button type="button" id="teamAddBtn" class="confirm compact">Adicionar garçom</button>
+            <button type="button" id="refreshTeamBtn" class="ghost compact">Atualizar</button>
+          </div>
+        </div>
+        <p id="teamMeta" class="muted orders-meta"></p>
+        <div id="teamList" class="team-list"></div>
+      </section>
+
+      <section id="tab-store" class="tab" hidden>
+        <h3>Configuração da loja</h3>
+        <div class="store-tabbar" role="tablist" aria-label="Configuração da loja">
+          <button type="button" class="store-tabbtn" data-store-tab="geral" role="tab" aria-selected="true">Geral</button>
+          <button type="button" class="store-tabbtn" data-store-tab="funcionamento" role="tab" aria-selected="false">Funcionamento</button>
+          <button type="button" class="store-tabbtn" data-store-tab="endereco" role="tab" aria-selected="false">Endereço &amp; Entrega</button>
+          <button type="button" class="store-tabbtn" data-store-tab="impressao" role="tab" aria-selected="false">Configurações de Impressão</button>
+          <button type="button" class="store-tabbtn" data-store-tab="painel" role="tab" aria-selected="false">Painel</button>
+        </div>
+
+        <div class="store-tabpanel" data-store-panel="geral">
+          <label>Nome</label>
+          <input id="storeName" type="text" />
+          <label>WhatsApp</label>
+          <input id="whatsapp" type="text" />
+          <label>Chave Pix</label>
+          <input id="pixKey" type="text" />
+          <label>Label Pix</label>
+          <input id="pixKeyLabel" type="text" />
+          <label>Logo URL</label>
+          <input id="logoUrl" type="text" />
+          <label>Upload logo</label>
+          <input id="logoFile" type="file" accept="image/*" />
+
+          <h4 class="store-section-title">Ícone da loja</h4>
+          <p class="muted">Usado na aba do navegador, nas páginas e no atalho da área de trabalho. Padrão: emoji 🍔. Preferível PNG quadrado (ex.: 512×512) se for personalizar.</p>
+          <div class="store-icon-row">
+            <img id="storeIconPreview" class="store-icon-preview" src="" alt="Prévia do ícone" hidden />
+            <div class="store-icon-fields">
+              <label>Ícone URL
+                <input id="iconUrl" type="text" placeholder="/uploads/icon.png ou deixe vazio para o padrão" />
+              </label>
+              <label>Upload ícone
+                <input id="iconFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.ico" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-tabpanel" data-store-panel="funcionamento" hidden>
+          <h4 class="store-section-title">Funcionamento</h4>
+          <p class="muted">Ative os dias, informe o expediente e, se quiser, um intervalo de pausa em cada dia.</p>
+          <div id="scheduleDays" class="schedule-day-rows"></div>
+          <label>Mensagem quando fechado (opcional)
+            <input id="scheduleClosedMessage" type="text" placeholder="Deixe em branco para montar automaticamente com dias e horários" />
+          </label>
+          <p class="muted">Se estiver em branco, o cardápio monta: “Estamos fechados… Funcionamos [dias], das [abre] às [fecha].”</p>
+
+          <h4 class="store-section-title">Opções de pão</h4>
+          <p class="muted">Desmarque quando o pão acabar — o cardápio mostra apenas as opções disponíveis.</p>
+          <div id="breadOptionsBox" class="day-checks bread-options">
+            <label><input type="checkbox" data-bread-id="pao-frances" data-bread-label="Pão francês" checked /> Pão francês</label>
+            <label><input type="checkbox" data-bread-id="pao-hamburguer" data-bread-label="Pão hambúrguer" checked /> Pão hambúrguer</label>
+          </div>
+
+          <h4 class="store-section-title">Preparação automática</h4>
+          <p class="muted">Quando ativa, pedidos <strong>confirmados</strong> avançam automaticamente para <strong>Em preparação</strong> após o tempo definido, mesmo com o painel fechado.</p>
+          <label class="check-inline"><input type="checkbox" id="autoAdvancePreparing" /> Avançar automaticamente para "Em preparação"</label>
+          <label>Tempo até "Em preparação" (min)
+            <input id="autoAdvancePreparingMinutes" type="number" step="1" min="1" max="1440" value="5" />
+          </label>
+          <p id="autoAdvanceStatus" class="muted store-tab-status"></p>
+
+          <h4 class="store-section-title">Consumo no local (mesas)</h4>
+          <p class="muted">Habilite para gerenciar mesas e receber pedidos de dentro do restaurante. Os pedidos de delivery e retirada seguem funcionando normalmente.</p>
+          <label class="check-inline"><input type="checkbox" id="useTablesEnabled" /> Usar mesas</label>
+          <label class="store-field">Quantidade de mesas
+            <input id="tableCount" type="number" min="1" max="200" step="1" placeholder="Ex.: 8" disabled />
+          </label>
+          <label class="store-field">Duração da sessão do garçom (horas)
+            <input id="waiterSessionHours" type="number" min="1" max="24" step="1" placeholder="Ex.: 8" disabled />
+          </label>
+          <p id="sessionExpireInfo" class="muted store-tab-status"></p>
+          <p class="muted">Ao salvar com o uso de mesas ativo, as mesas faltantes são criadas automaticamente (Mesa 1…Mesa N).</p>
+          <label class="check-inline"><input type="checkbox" id="dineInEnabled" /> Ativar consumo no local (mesas)</label>
+          <label class="check-inline"><input type="checkbox" id="customerQrOrdersEnabled" /> Permitir pedido do cliente via QR Code</label>
+          <label class="check-inline"><input type="checkbox" id="waiterOrdersEnabled" /> Permitir pedidos por garçom</label>
+          <label class="check-inline"><input type="checkbox" id="allowManualTableEntry" /> Permitir escolha manual da mesa</label>
+          <label class="check-inline"><input type="checkbox" id="requireCustomerNameForQrOrder" /> Exigir nome do cliente no pedido QR</label>
+          <label class="check-inline"><input type="checkbox" id="allowCustomerChooseWaiter" /> Permitir que o cliente escolha o garçom</label>
+        </div>
+
+        <div class="store-tabpanel" data-store-panel="endereco" hidden>
+          <h4 class="store-section-title">Endereço base (estabelecimento)</h4>
+          <p class="muted">Usado para calcular distância até o cliente. Informe o CEP como no cardápio.</p>
+          <div class="row">
+            <label>CEP
+              <input id="storeCep" type="tel" inputmode="numeric" maxlength="9" placeholder="00000-000" autocomplete="postal-code" />
+            </label>
+            <label>Número
+              <input id="storeNumber" type="text" placeholder="Nº" autocomplete="address-line2" />
+            </label>
+          </div>
+          <p id="storeCepStatus" class="muted"></p>
+          <label>Endereço</label>
+          <input id="storeAddress" type="text" placeholder="Preenchido automaticamente pelo CEP" />
+          <div class="row">
+            <label>Cidade
+              <input id="storeCity" type="text" placeholder="Ex.: Ribeirão Preto" autocomplete="address-level2" />
+            </label>
+            <label>UF
+              <input id="storeState" type="text" maxlength="2" placeholder="SP" autocomplete="address-level1" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Latitude
+              <input id="storeLat" type="number" step="0.000001" placeholder="-21.17" readonly />
+            </label>
+            <label>Longitude
+              <input id="storeLng" type="number" step="0.000001" placeholder="-47.81" readonly />
+            </label>
+            <button type="button" id="geocodeStoreBtn" class="ghost compact">Buscar no mapa</button>
+          </div>
+          <p id="geocodeStoreStatus" class="muted"></p>
+
+          <h4 class="store-section-title">Entrega por km</h4>
+          <div class="row">
+            <label>Taxa por km (R$)
+              <input id="deliveryFeePerKm" type="number" step="0.01" min="0" value="0" />
+            </label>
+            <label>Taxa mínima (R$)
+              <input id="minDeliveryFee" type="number" step="0.01" min="0" value="0" />
+            </label>
+            <label>Limite de atendimento (km)
+              <input id="maxDeliveryKm" type="number" step="0.1" min="0" value="0" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Prazo de entrega Dom a Qui (min)
+              <input id="deliveryMinutesWeek" type="number" min="0" max="1440" placeholder="Em branco = prazo padrão" />
+            </label>
+            <label>Prazo de entrega Sex e Sáb (min)
+              <input id="deliveryMinutesWeekend" type="number" min="0" max="1440" placeholder="Em branco = prazo padrão" />
+            </label>
+          </div>
+          <p class="muted">O cardápio usa <strong>apenas estes 3 campos</strong> de taxa (distância × taxa/km, nunca abaixo da taxa mínima; bloqueia além do limite). Taxas por bairro do seed são ignoradas quando a entrega por km está configurada. Com coordenadas da loja preenchidas, o frete é calculado ao informar o CEP. O prazo de entrega (Dom a Qui / Sex e Sáb) vale por dia do pedido e o acompanhamento conta a partir da <strong>confirmação</strong>.</p>
+        </div>
+
+        <div class="store-tabpanel" data-store-panel="impressao" hidden>
+          <h4 class="store-section-title">Impressão automática</h4>
+          <p class="muted">Preferências locais deste navegador — não alteram o cardápio público.</p>
+          <label class="check-inline"><input type="checkbox" id="autoPrintOnConfirm" /> Imprimir cupom automaticamente ao confirmar pedido</label>
+          <label class="check-inline"><input type="checkbox" id="autoPrintMesaOnConfirm" /> Imprimir cupom do Balcão, Mesa e Telefone ao chegar em Confirmado</label>
+
+          <h4 class="store-section-title">Cupom (conteúdo e layout)</h4>
+          <label>Largura do papel
+            <select id="receiptWidthSettings" class="compact-select" aria-label="Largura do papel do cupom">
+              <option value="80">80 mm (ECF)</option>
+              <option value="58">58 mm</option>
+            </select>
+          </label>
+          <p class="muted">Largura padrão do cupom. Também pode ser trocada na hora no modal de impressão do pedido (ambos sincronizam).</p>
+          <label class="check-inline"><input type="checkbox" id="receiptBold" checked /> Negrito no cupom</label>
+          <label class="check-inline"><input type="checkbox" id="receiptShowSeparators" checked /> Separadores (linhas de ---)</label>
+          <label class="check-inline"><input type="checkbox" id="receiptShowAddress" checked /> Endereço de entrega</label>
+          <label class="check-inline"><input type="checkbox" id="receiptShowItemNotes" checked /> Observações dos itens</label>
+          <label class="check-inline"><input type="checkbox" id="receiptShowPayment" checked /> Pagamento / status do pagamento</label>
+          <label>Espaçamento entre linhas
+            <select id="receiptLineHeight" aria-label="Espaçamento entre linhas">
+              <option value="1.15">Compacto (1.15)</option>
+              <option value="1.25">Pouco espaçado (1.25)</option>
+              <option value="1.35" selected>Padrão (1.35)</option>
+              <option value="1.5">Espaçado (1.5)</option>
+              <option value="1.65">Bem espaçado (1.65)</option>
+              <option value="1.8">Muito espaçado (1.8)</option>
+            </select>
+          </label>
+          <label>Zoom do cupom
+            <select id="receiptZoom" aria-label="Zoom do cupom">
+              <option value="90">90%</option>
+              <option value="95">95%</option>
+              <option value="100" selected>100%</option>
+              <option value="110">110%</option>
+              <option value="120">120%</option>
+              <option value="130">130%</option>
+              <option value="140">140%</option>
+            </select>
+          </label>
+          <label>Rodapé do cupom
+            <input id="receiptFooter" type="text" placeholder="Ex.: WhatsApp (11) 91234-5678 — Obrigado pela preferência!" autocomplete="off" />
+          </label>
+
+          <h4 class="store-section-title">Impressão direta (ESC/POS)</h4>
+          <label class="check-inline"><input type="checkbox" id="receiptEscpos" /> Imprimir direto na térmica (ESC/POS, sem driver)</label>
+          <p class="muted" id="receiptEscposHint" hidden>Direto ESC/POS exige Chrome/Edge com HTTPS ou localhost e impressora USB ou porta serial (COM). No "Imprimir" do cupom, conceda acesso à impressora uma vez.</p>
+          <label>Caracteres por linha no direto (ESC/POS, 0 = automático)
+            <input id="receiptEscposChars" type="number" step="1" min="0" max="42" value="0" placeholder="0 (auto: 42 / 58mm = 32)" />
+          </label>
+          <p id="receiptDeviceInfo" class="muted"></p>
+
+          <h4 class="store-section-title">Impressora</h4>
+          <p class="muted">Escolha como o cupom é impresso à térmica.</p>
+          <label>Impressora / conexão
+            <select id="receiptPrinterSelect" aria-label="Impressora e conexão do cupom">
+              <option value="serial">Porta serial (USB/COM ou Bluetooth)</option>
+              <option value="usb">USB direto (WebUSB)</option>
+              <option value="windows">Windows (diálogo padrão)</option>
+            </select>
+          </label>
+          <p id="receiptPrinterInfo" class="muted"></p>
+          <div id="receiptSerialOptions" class="receipt-test-row" hidden>
+            <label class="receipt-serial-label">Velocidade (baud)
+              <select id="receiptSerialBaud" class="compact-select" aria-label="Velocidade da porta serial">
+                <option value="9600" selected>9600</option>
+                <option value="19200">19200</option>
+                <option value="38400">38400</option>
+              </select>
+            </label>
+            <button type="button" id="receiptSerialPickBtn" class="ghost compact">Selecionar porta</button>
+            <span id="receiptSerialDeviceInfo" class="muted"></span>
+          </div>
+
+          <h4 class="store-section-title">Teste de impressão</h4>
+          <p class="muted">Verifica a comunicação com a impressora sem imprimir. Use "Imprimir teste" apenas se quiser confirmar de ponta a ponta. Se a impressora já estiver instalada/configurada no Windows, use "Imprimir via Windows" e selecione-a no diálogo do navegador.</p>
+          <div class="receipt-test-row">
+            <button type="button" id="receiptTestBtn" class="ghost compact">Testar comunicação</button>
+            <button type="button" id="receiptTestPickBtn" class="ghost compact" hidden>Selecionar impressora</button>
+            <button type="button" id="receiptTestPrintBtn" class="ghost compact" hidden>Imprimir teste</button>
+            <button type="button" id="receiptTestWindowsBtn" class="ghost compact">Imprimir via Windows</button>
+          </div>
+          <p id="receiptTestStatus" class="muted" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="store-tabpanel" data-store-panel="painel" hidden>
+          <h4 class="store-section-title">Alertas do painel (neste navegador)</h4>
+          <p class="muted">Preferências locais do atendimento — não alteram o cardápio público.</p>
+          <div class="row">
+            <label>Alerta amarelo (% do prazo)
+              <input id="slaWarnPercent" type="number" step="1" min="1" max="100" value="70" />
+            </label>
+            <label>Sirene (% do prazo)
+              <input id="slaDangerPercent" type="number" step="1" min="1" max="100" value="90" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Volume novo pedido (0–100)
+              <input id="newOrderVolume" type="number" step="1" min="0" max="100" value="70" />
+            </label>
+            <label>Volume sirene de prazo (0–100)
+              <input id="slaVolume" type="number" step="1" min="0" max="100" value="90" />
+            </label>
+          </div>
+          <label class="check-inline"><input type="checkbox" id="playSoundWhenHidden" checked /> Tocar som com a aba em segundo plano</label>
+          <label class="check-inline"><input type="checkbox" id="desktopNotifyPref" checked /> Notificações do sistema (com som do Windows quando a aba estiver oculta)</label>
+        </div>
+
+        <div class="store-tab-actions">
+          <button id="saveStoreBtn" type="button">Salvar</button>
+          <p id="storeSaveStatus" class="muted"></p>
+        </div>
+      </section>
+
+      <section id="tab-categories" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Categorias</h3>
+            <p class="muted">Arraste para reordenar. Clique no nome para ver os produtos. Exclusão só é permitida sem produtos vinculados.</p>
+          </div>
+          <div class="orders-header-actions">
+            <button type="button" id="exportCatalogBtn" class="ghost compact" title="Baixa JSON com categorias, produtos e ingredientes">Exportar cardápio</button>
+          </div>
+        </div>
+        <div class="list-toolbar">
+          <button type="button" id="newCategoryBtn" class="compact">Nova categoria</button>
+          <input id="categorySearch" type="search" class="list-search" placeholder="Buscar categoria..." aria-label="Buscar categorias" />
+        </div>
+        <ul id="catList"></ul>
+      </section>
+
+      <section id="tab-ingredients" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Ingredientes</h3>
+            <p class="muted">Usados na descrição dos produtos (não aparecem como categoria no cardápio). Arraste para reordenar. Exclusão só sem produtos vinculados.</p>
+          </div>
+        </div>
+        <div class="list-toolbar">
+          <button type="button" id="newIngredientBtn" class="compact">Novo ingrediente</button>
+          <input id="ingredientSearch" type="search" class="list-search" placeholder="Buscar ingrediente..." aria-label="Buscar ingredientes" />
+        </div>
+        <ul id="ingList"></ul>
+      </section>
+
+      <section id="tab-opcionais" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Opcionais</h3>
+            <p class="muted">Itens pagos que podem ser oferecidos nos produtos (ficam na categoria oculta "Adicionais", fora do cardápio). Arraste para reordenar. Exclusão só sem produtos vinculados.</p>
+          </div>
+        </div>
+        <div class="list-toolbar">
+          <button type="button" id="newOpcionalBtn" class="compact">Novo opcional</button>
+          <input id="opcionalSearch" type="search" class="list-search" placeholder="Buscar opcional..." aria-label="Buscar opcionais" />
+        </div>
+        <ul id="opcionalList"></ul>
+      </section>
+
+      <section id="tab-products" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Produtos</h3>
+            <p class="muted">Selecione a categoria ao cadastrar. Arraste para reordenar dentro da categoria.</p>
+          </div>
+          <div class="orders-header-actions">
+            <select id="productCategoryFilter" class="compact-select" aria-label="Filtrar produtos por categoria">
+              <option value="">Todas as categorias</option>
+            </select>
+          </div>
+        </div>
+        <div id="productFilterBar" class="filter-bar" hidden>
+          <span id="productFilterLabel"></span>
+          <button type="button" id="clearProductFilterBtn" class="ghost compact">Ver todos</button>
+        </div>
+        <div class="list-toolbar">
+          <button type="button" id="newProductBtn" class="compact">Novo produto</button>
+          <input id="productSearch" type="search" class="list-search" placeholder="Buscar produto..." aria-label="Buscar produtos" />
+        </div>
+        <ul id="prodList"></ul>
+      </section>
+
+      <section id="tab-systems" class="tab" hidden>
+        <h3>Sistemas (Dev)</h3>
+        <p class="muted">Atalhos de administração e observabilidade do ambiente.</p>
+        <div id="systemsLinks" class="systems-links"></div>
+      </section>
+
+      <section id="tab-platform" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Dashboard da plataforma</h3>
+            <p class="muted">Saúde da infra, lojas clientes, mensalidades e alertas operacionais.</p>
+          </div>
+          <div class="orders-header-actions">
+            <button type="button" id="refreshPlatformDashBtn" class="ghost compact">Atualizar</button>
+          </div>
+        </div>
+        <div id="platformDashKpis" class="dash-kpis"></div>
+        <div id="platformDashAlerts" class="platform-alerts" hidden></div>
+        <div class="platform-dash-grid">
+          <article class="dash-card">
+            <h4>Saúde dos serviços</h4>
+            <div id="platformHealthList" class="platform-health-list"></div>
+          </article>
+          <article class="dash-card">
+            <h4>Loja no ar</h4>
+            <div id="platformStoreStatus" class="platform-status-block"></div>
+          </article>
+          <article class="dash-card">
+            <h4>Financeiro</h4>
+            <div id="platformFinance" class="platform-status-block"></div>
+          </article>
+          <article class="dash-card">
+            <h4>Catálogo (sanidade)</h4>
+            <div id="platformCatalogSanity" class="platform-status-block"></div>
+          </article>
+        </div>
+        <div class="platform-dash-grid" style="margin-top:0.85rem">
+          <article class="dash-card">
+            <h4>Acessos — últimas 24h</h4>
+            <canvas id="chartPlatformHourly" height="160"></canvas>
+            <div id="platformTrafficMeta" class="muted" style="margin-top:0.5rem;font-size:0.85rem"></div>
+          </article>
+          <article class="dash-card">
+            <h4>Acessos — 7 dias</h4>
+            <canvas id="chartPlatformDaily" height="160"></canvas>
+            <div id="platformRailwayHint" class="platform-status-block" style="margin-top:0.75rem"></div>
+          </article>
+        </div>
+        <article class="dash-card platform-dash-stores">
+          <div class="orders-header" style="margin:0 0 0.75rem">
+            <h4 style="margin:0">Lojas</h4>
+            <button type="button" id="platformDashGoLojas" class="ghost compact">Gerenciar</button>
+          </div>
+          <div id="platformDashStores" class="platform-dash-store-list"></div>
+        </article>
+        <article class="dash-card" style="margin-top:0.85rem">
+          <h4>Ambiente</h4>
+          <div id="platformEnvLinks" class="platform-env-links"></div>
+        </article>
+        <p id="platformDashMeta" class="muted orders-meta"></p>
+      </section>
+
+      <section id="tab-lojas" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Lojas da plataforma</h3>
+            <p class="muted">Clientes usando o sistema — dados, URLs, pagamento, integrações e usuários.</p>
+          </div>
+          <div class="orders-header-actions">
+            <button type="button" id="refreshPlatformStoresBtn" class="ghost compact">Atualizar</button>
+            <button type="button" id="newPlatformStoreBtn" class="compact">Nova loja</button>
+          </div>
+        </div>
+
+        <div id="platformStoreKpis" class="dash-kpis"></div>
+
+        <div class="list-toolbar platform-filter-bar">
+          <input id="platformSearch" type="search" placeholder="Buscar (nome, CNPJ, cidade...)" />
+          <select id="platformFilterStatus">
+            <option value="">Status: todos</option>
+            <option value="active">Ativa</option>
+            <option value="setup">Em implantação</option>
+            <option value="inactive">Inativa</option>
+          </select>
+          <select id="platformFilterPlan">
+            <option value="">Plano: todos</option>
+            <option value="starter">Starter</option>
+            <option value="basic">Basic</option>
+            <option value="premium">Premium</option>
+            <option value="trial">Trial</option>
+          </select>
+          <select id="platformFilterSegment">
+            <option value="">Segmento: todos</option>
+            <option value="Açougue">Açougue</option>
+            <option value="Gás">Gás</option>
+            <option value="Hamburgueria">Hamburgueria</option>
+            <option value="Lanchonete">Lanchonete</option>
+            <option value="Pizzaria">Pizzaria</option>
+          </select>
+        </div>
+
+        <div class="dash-table-wrap">
+          <table class="dash-table platform-table">
+            <thead>
+              <tr>
+                <th>Loja</th>
+                <th>CNPJ</th>
+                <th>Segmento</th>
+                <th>Plano</th>
+                <th>Status</th>
+                <th>Último acesso</th>
+                <th class="align-center">Cardápio</th>
+                <th class="align-center">Pedidos</th>
+                <th class="align-right">Mensalidade</th>
+                <th>Pagamento</th>
+                <th class="align-center">Banco</th>
+                <th class="align-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="platformStoresList"></tbody>
+          </table>
+        </div>
+        <p id="platformStoresEmpty" class="muted" hidden>Nenhuma loja encontrada.</p>
+      </section>
+
+      <section id="tab-bank" class="tab" hidden>
+        <div class="orders-header">
+          <div>
+            <h3>Banco de dados</h3>
+            <p class="muted">Explorador das tabelas da loja (PostgreSQL). Alterações são gravadas direto no banco.</p>
+          </div>
+          <div class="orders-header-actions">
+            <select id="bankStoreSelect" class="compact-select" aria-label="Loja selecionada">
+              <option value="">Carregando lojas…</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="list-toolbar bank-toolbar">
+          <select id="bankTableSelect" class="compact-select" aria-label="Tabela">
+            <option value="">Selecione a tabela</option>
+          </select>
+          <input id="bankSearchInput" type="search" placeholder="Buscar nas colunas…" />
+          <button type="button" id="bankRefreshBtn" class="compact">Atualizar</button>
+          <button type="button" id="bankNewRowBtn" class="compact" disabled>Novo registro</button>
+        </div>
+
+        <p id="bankUnavailable" class="muted" hidden></p>
+        <p id="bankTableInfo" class="muted bank-table-info" hidden></p>
+
+        <div class="dash-table-wrap bank-table-wrap">
+          <table class="dash-table bank-table">
+            <thead id="bankRowsHead"></thead>
+            <tbody id="bankRowsBody"></tbody>
+          </table>
+          <p id="bankEmpty" class="muted" hidden>Nenhum registro.</p>
+        </div>
+
+        <div id="bankPagination" class="bank-pagination" hidden>
+          <button type="button" id="bankPrevBtn" class="ghost compact" disabled>← Anterior</button>
+          <span id="bankPageInfo" class="muted"></span>
+          <button type="button" id="bankNextBtn" class="ghost compact" disabled>Próxima →</button>
+        </div>
+      </section>
+    </main>
+    </div>
+    <div id="drawerBackdrop" hidden></div>
+  </div>
+
+  <div id="platformStoreModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card form-modal-card platform-modal-card" role="dialog" aria-modal="true" aria-labelledby="platformFormTitle">
+      <div class="platform-modal-head">
+        <h3 id="platformFormTitle">Nova loja</h3>
+        <button type="button" id="platformModalCloseBtn" class="ghost compact" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="platform-modal-tabs">
+        <button type="button" class="active" data-ptab="dados">Loja</button>
+        <button type="button" data-ptab="urls">URLs</button>
+        <button type="button" data-ptab="pagamento">Pagamento</button>
+        <button type="button" data-ptab="integracoes">Integrações</button>
+        <button type="button" data-ptab="usuarios">Usuários</button>
+      </div>
+
+      <div class="platform-modal-body">
+        <input type="hidden" id="platformStoreId" />
+
+        <div class="platform-modal-pane" data-pane="dados">
+          <div class="row">
+            <label>Nome
+              <input id="platformName" type="text" placeholder="Ex: Fabin Lanches" />
+            </label>
+            <label>CNPJ
+              <input id="platformCnpj" type="text" placeholder="00.000.000/0000-00" inputmode="numeric" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Razão social
+              <input id="platformRazaoSocial" type="text" placeholder="Nome completo da empresa" />
+            </label>
+            <label>Plano
+              <select id="platformPlan">
+                <option value="">—</option>
+                <option value="starter">Starter</option>
+                <option value="basic">Basic</option>
+                <option value="premium">Premium</option>
+                <option value="trial">Trial</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Segmento
+              <select id="platformSegmento">
+                <option value="">—</option>
+                <option value="Açougue">Açougue</option>
+                <option value="Gás">Gás</option>
+                <option value="Hamburgueria">Hamburgueria</option>
+                <option value="Lanchonete">Lanchonete</option>
+                <option value="Pizzaria">Pizzaria</option>
+                <option value="__custom__">Outro (cadastrar novo)...</option>
+              </select>
+            </label>
+            <label id="platformSegmentoCustomWrap" hidden>
+              Novo segmento
+              <input id="platformSegmentoCustom" type="text" placeholder="Ex: Restaurante" maxlength="50" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Status
+              <select id="platformStatus">
+                <option value="active">Ativa</option>
+                <option value="setup">Em implantação</option>
+                <option value="inactive">Inativa</option>
+              </select>
+            </label>
+            <label>Contato
+              <input id="platformContactName" type="text" placeholder="Nome do contato" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Telefone
+              <input id="platformPhone" type="text" placeholder="(11) 99999-0000" inputmode="numeric" />
+            </label>
+            <label>E-mail
+              <input id="platformEmail" type="email" placeholder="contato@loja.com.br" />
+            </label>
+          </div>
+          <p class="muted">Endereço</p>
+          <div class="row">
+            <label>Rua
+              <input id="platformAddress" type="text" placeholder="Rua / Av." />
+            </label>
+            <label>Número
+              <input id="platformAddressNumber" type="text" />
+            </label>
+          </div>
+          <div class="row">
+            <label>CEP
+              <input id="platformCep" type="text" placeholder="00000-000" inputmode="numeric" />
+            </label>
+            <label>Cidade
+              <input id="platformCity" type="text" placeholder="Cidade" />
+            </label>
+            <label>UF
+              <input id="platformState" type="text" maxlength="2" placeholder="SP" />
+            </label>
+          </div>
+          <label>Logo
+            <div class="store-icon-row">
+              <img id="platformLogoPreview" class="store-icon-preview" src="" alt="Logo da loja" hidden />
+              <div class="store-icon-fields">
+                <input id="platformLogoFile" type="file" accept="image/png,image/jpeg,image/webp" />
+                <p class="field-hint muted">PNG, JPG ou WEBP (máx. 2 MB). Enviado para /uploads/stores/...</p>
+                <p id="platformLogoStatus" class="field-hint muted" hidden></p>
+              </div>
+            </div>
+          </label>
+          <div id="platformNewStoreAdmin" class="platform-admin-scaffold">
+            <p class="muted">Usuário admin da loja (criado junto com a loja)</p>
+            <div class="row">
+              <label>Usuário
+                <input id="platformAdminUsername" type="text" autocomplete="off" placeholder="letras, números, _ ou -" />
+              </label>
+              <label>Senha inicial
+                <input id="platformAdminPassword" type="text" autocomplete="off" placeholder="mín. 6 caracteres" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="platform-modal-pane" data-pane="urls" hidden>
+          <p class="muted">URLs remotas (produção)</p>
+          <div class="row">
+            <label>Front (URL)
+              <input id="platformFrontUrl" type="url" placeholder="https://..." />
+            </label>
+            <label>Front (notas)
+              <input id="platformFrontNotes" type="text" placeholder="PWA, domínio, etc." />
+            </label>
+          </div>
+          <div class="row">
+            <label>Back (URL)
+              <input id="platformBackUrl" type="url" placeholder="https://api..." />
+            </label>
+            <label>Back (notas)
+              <input id="platformBackNotes" type="text" placeholder="Gateway, serviços..." />
+            </label>
+          </div>
+          <div class="row">
+            <label>Back (usuário)
+              <input id="platformBackUsername" type="text" autocomplete="off" placeholder="admin da loja remota" />
+            </label>
+            <label>Back (senha)
+              <input id="platformBackPassword" type="password" autocomplete="off" placeholder="credenciais do ambiente remoto" />
+            </label>
+          </div>
+          <p class="field-hint muted">Credenciais usadas por “Administrar” para comparar/sincronizar com o ambiente remoto (Back URL). Sem elas, o comparativo usa apenas o cardápio público.</p>
+          <div class="row">
+            <label>Admin (URL)
+              <input id="platformAdminUrl" type="url" placeholder="https://admin..." />
+            </label>
+            <label>Banco (URL)
+              <input id="platformDatabaseUrl" type="url" placeholder="https://railway.app/..." />
+            </label>
+          </div>
+          <label>Banco de dados (info)
+            <input id="platformDatabaseInfo" type="text" placeholder="PostgreSQL · host / databases" />
+          </label>
+          <p class="muted">URLs locais (dev)</p>
+          <div class="row">
+            <label>Front local
+              <input id="platformLocalFrontUrl" type="url" placeholder="http://localhost:8080/" />
+            </label>
+            <label>Back local
+              <input id="platformLocalBackUrl" type="url" placeholder="http://localhost:5100/api/v1/" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Admin local
+              <input id="platformLocalAdminUrl" type="url" placeholder="http://localhost:8081/" />
+            </label>
+            <label>Banco local
+              <input id="platformLocalDatabaseUrl" type="url" placeholder="http://localhost:5432/" />
+            </label>
+          </div>
+        </div>
+
+        <div class="platform-modal-pane" data-pane="pagamento" hidden>
+          <div class="row">
+            <label>Mensalidade (R$)
+              <input id="platformMonthlyFee" type="number" step="0.01" min="0" value="0" />
+            </label>
+            <label>Status pagamento
+              <select id="platformPaymentStatus">
+                <option value="pending">Pendente</option>
+                <option value="paid">Pago</option>
+                <option value="overdue">Em atraso</option>
+                <option value="courtesy">Cortesia</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label class="inline platform-check">
+              <input id="platformCourtesy" type="checkbox" /> Cortesia
+            </label>
+            <label>Cortesia até
+              <input id="platformCourtesyUntil" type="date" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Último pagamento
+              <input id="platformLastPaymentAt" type="date" />
+            </label>
+            <label>Próximo vencimento
+              <input id="platformNextDueAt" type="date" />
+            </label>
+          </div>
+          <label>Observações de pagamento
+            <input id="platformPaymentNotes" type="text" />
+          </label>
+          <label class="inline platform-check">
+            <input id="platformActive" type="checkbox" checked /> Loja ativa
+          </label>
+          <div class="platform-payments-history">
+            <p class="muted">Histórico de pagamentos</p>
+            <ul id="platformPaymentsList" class="platform-payments"></ul>
+          </div>
+        </div>
+
+        <div class="platform-modal-pane" data-pane="integracoes" hidden>
+          <div class="row">
+            <label>Domínio
+              <input id="platformDomain" type="text" placeholder="loja.example.com" />
+            </label>
+            <label>API Key
+              <input id="platformApiKey" type="text" autocomplete="off" placeholder="chave de integração" />
+            </label>
+          </div>
+          <label>Webhook URL
+            <input id="platformWebhookUrl" type="url" placeholder="https://..." />
+          </label>
+          <p class="muted">Galeria de imagens</p>
+          <div class="platform-gallery-add">
+            <input id="platformGalleryFile" type="file" accept="image/png,image/jpeg,image/webp" />
+            <input id="platformGalleryTitle" type="text" placeholder="Título (opcional)" />
+            <button type="button" id="platformGalleryAddBtn" class="compact">Adicionar</button>
+          </div>
+          <div id="platformGalleryList" class="platform-gallery"></div>
+        </div>
+
+        <div class="platform-modal-pane" data-pane="usuarios" hidden>
+          <div id="platformUsersList" class="platform-users"></div>
+          <div class="platform-user-add">
+            <p class="muted">Novo usuário da loja</p>
+            <div class="row">
+              <label>Usuário
+                <input id="platformUserUsername" type="text" autocomplete="off" />
+              </label>
+              <label>Senha
+                <input id="platformUserPassword" type="text" autocomplete="off" />
+              </label>
+              <label>Papel
+                <select id="platformUserRole">
+                  <option value="Admin">Admin</option>
+                  <option value="Atendimento">Atendimento</option>
+                </select>
+              </label>
+              <button type="button" id="platformUserAddBtn" class="compact">Adicionar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="platform-modal-actions">
+        <button type="button" id="savePlatformStoreBtn">Salvar</button>
+        <button type="button" id="cancelPlatformStoreBtn" class="ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="categoryModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card form-modal-card" role="dialog" aria-modal="true" aria-labelledby="catFormMode">
+      <h3 id="catFormMode">Nova categoria</h3>
+      <label>Título
+        <input id="catTitle" type="text" placeholder="Título" autocomplete="off" />
+      </label>
+      <label class="inline"><input id="catShowInMenu" type="checkbox" checked /> Exibir no cardápio</label>
+      <p class="field-hint muted">Desmarque para manter a categoria só no admin. “Adicionais” nunca aparece no cardápio público. Não cadastre “Ingredientes” como categoria — use a aba Ingredientes.</p>
+      <div class="confirm-modal-actions">
+        <button id="saveCatBtn" type="button">Salvar categoria</button>
+        <button id="cancelCatBtn" type="button" class="ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="productModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card form-modal-card" role="dialog" aria-modal="true" aria-labelledby="prodFormMode">
+      <h3 id="prodFormMode">Novo produto</h3>
+      <label>Categoria
+        <select id="prodCategory">
+          <option value="">Selecione a categoria</option>
+        </select>
+      </label>
+      <label>Nome
+        <input id="prodName" type="text" placeholder="Nome" autocomplete="off" />
+      </label>
+      <label id="prodPriceLabel">Preço
+        <input id="prodPrice" type="number" step="0.01" placeholder="Preço" />
+      </label>
+      <div id="prodSizePrices" class="price-size-row" hidden>
+        <label>Preço média
+          <input id="prodPriceMedia" type="number" step="0.01" min="0" placeholder="Média" />
+        </label>
+        <label>Preço inteira
+          <input id="prodPriceInteira" type="number" step="0.01" min="0" placeholder="Inteira" />
+        </label>
+      </div>
+      <label>Imagem do produto
+        <div class="store-icon-row">
+          <img id="prodImagePreview" class="store-icon-preview" src="" alt="Prévia da imagem" hidden />
+          <div class="store-icon-fields">
+            <input id="prodImageFile" type="file" accept="image/png,image/jpeg,image/webp" />
+            <p class="field-hint muted">Envie PNG, JPG ou WEBP (máx. 2 MB). O fundo claro/neutro é removido automaticamente e a imagem é convertida para WebP no servidor.</p>
+            <p id="prodImageStatus" class="field-hint muted" hidden></p>
+            <input id="prodImageUrl" type="text" placeholder="ou cole uma URL https://..." autocomplete="off" />
+            <button id="prodImageRemoveBtn" type="button" class="ghost" hidden>Remover imagem</button>
+          </div>
+        </div>
+      </label>
+      <fieldset id="prodIngredientsFieldset" class="ingredient-fieldset">
+        <legend>Ingredientes</legend>
+        <div class="list-toolbar">
+          <button type="button" id="prodAddIngredientBtn" class="compact">Adicionar ingrediente</button>
+          <button type="button" id="prodNewIngredientBtn" class="compact ghost">Novo ingrediente</button>
+        </div>
+        <p id="prodIngredientsHint" class="muted">Mostra os ingredientes deste produto. O cliente pode remover qualquer um de graça, exceto o marcado como Principal. Arraste para definir a ordem.</p>
+        <div id="prodIngredientRows" class="ingredient-checks"></div>
+      </fieldset>
+      <fieldset id="prodModifiersFieldset" class="ingredient-fieldset">
+        <legend>Opcionais</legend>
+        <div class="list-toolbar">
+          <button type="button" id="prodAddOptionBtn" class="compact">Adicionar opcional</button>
+          <button type="button" id="prodNewOptionBtn" class="compact ghost">Novo opcional</button>
+        </div>
+        <p class="muted">Itens pagos que o cliente pode acrescentar. O valor de cada um é somado ao preço do produto.</p>
+        <div id="prodOpcionalRows" class="modifier-groups-box"></div>
+      </fieldset>
+      <label class="inline"><input id="prodAvailable" type="checkbox" checked /> Disponível</label>
+      <label class="inline"><input id="prodShowInMenu" type="checkbox" checked /> Exibir no cardápio</label>
+      <p class="field-hint muted">Disponível = ativo no cadastro. Exibir no cardápio = aparece no front (útil para ocultar Adicionais só de descrição).</p>
+      <div class="confirm-modal-actions">
+        <button id="saveProdBtn" type="button">Salvar produto</button>
+        <button id="cancelProdBtn" type="button" class="ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ingredientModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card form-modal-card" role="dialog" aria-modal="true" aria-labelledby="ingFormMode">
+      <h3 id="ingFormMode">Novo ingrediente</h3>
+      <label>Nome
+        <input id="ingName" type="text" placeholder="Ex.: Queijo" autocomplete="off" />
+      </label>
+      <label class="inline"><input id="ingAvailable" type="checkbox" checked /> Disponível</label>
+      <div class="confirm-modal-actions">
+        <button id="saveIngBtn" type="button">Salvar ingrediente</button>
+        <button id="cancelIngBtn" type="button" class="ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="opcionalModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card form-modal-card" role="dialog" aria-modal="true" aria-labelledby="opcionalFormMode">
+      <h3 id="opcionalFormMode">Novo opcional</h3>
+      <label>Nome
+        <input id="opcionalName" type="text" placeholder="Ex.: Bacon extra" autocomplete="off" />
+      </label>
+      <label>Preço adicional (R$)
+        <input id="opcionalPrice" type="number" step="0.01" min="0" placeholder="0,00" />
+      </label>
+      <label class="inline"><input id="opcionalAvailable" type="checkbox" checked /> Disponível</label>
+      <div class="confirm-modal-actions">
+        <button id="saveOpcionalBtn" type="button">Salvar opcional</button>
+        <button id="cancelOpcionalBtn" type="button" class="ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="prodIngredientPickerModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="prodIngredientPickerTitle">
+      <h3 id="prodIngredientPickerTitle">Adicionar ingredientes</h3>
+      <label>Buscar
+        <input id="prodIngredientPickerSearch" type="text" placeholder="Digite para filtrar..." autocomplete="off" />
+      </label>
+      <div id="prodIngredientPickerList" class="ingredient-picker-list"></div>
+      <div class="confirm-modal-actions">
+        <button id="prodIngredientPickerConfirmBtn" type="button">Adicionar</button>
+        <button id="prodIngredientPickerCancelBtn" type="button" class="ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="prodOpcionalPickerModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="prodOpcionalPickerTitle">
+      <h3 id="prodOpcionalPickerTitle">Adicionar opcionais</h3>
+      <label>Buscar
+        <input id="prodOpcionalPickerSearch" type="text" placeholder="Digite para filtrar..." autocomplete="off" />
+      </label>
+      <div id="prodOpcionalPickerList" class="ingredient-picker-list"></div>
+      <div class="confirm-modal-actions">
+        <button id="prodOpcionalPickerConfirmBtn" type="button">Adicionar selecionados</button>
+        <button id="prodOpcionalPickerCancelBtn" type="button" class="ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="prodNewOpcionalModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card form-modal-card" role="dialog" aria-modal="true" aria-labelledby="prodNewOpcionalTitle">
+      <h3 id="prodNewOpcionalTitle">Novo opcional</h3>
+      <label>Nome
+        <input id="prodNewOpcionalName" type="text" placeholder="Ex.: Bacon extra" autocomplete="off" />
+      </label>
+      <label>Preço adicional (R$)
+        <input id="prodNewOpcionalPrice" type="number" step="0.01" min="0" placeholder="0,00" />
+      </label>
+      <label class="inline"><input id="prodNewOpcionalAvailable" type="checkbox" checked /> Disponível</label>
+      <p id="prodNewOpcionalError" class="error" hidden></p>
+      <div class="confirm-modal-actions">
+        <button id="prodNewOpcionalConfirmBtn" type="button">Adicionar opcional</button>
+        <button id="prodNewOpcionalCancelBtn" type="button" class="ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="receiptModal" class="confirm-modal receipt-modal" hidden>
+    <div class="confirm-modal-card receipt-modal-card" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
+      <div class="receipt-modal-head">
+        <h3 id="receiptModalTitle">Cupom do pedido</h3>
+        <div class="receipt-head-controls">
+          <label class="receipt-width-label">Largura
+            <select id="receiptWidthSelect" class="compact-select" aria-label="Largura do cupom">
+              <option value="80" selected>80 mm (ECF)</option>
+              <option value="58">58 mm</option>
+            </select>
+          </label>
+          <button type="button" id="receiptCustomBtn" class="ghost compact">Personalizar</button>
+        </div>
+      </div>
+      <div id="receiptCustomPanel" class="receipt-custom-panel" hidden>
+        <div class="receipt-custom-checks">
+          <label class="check-inline"><input type="checkbox" id="rceBold" checked /> Negrito</label>
+          <label class="check-inline"><input type="checkbox" id="rceShowSep" checked /> Separadores</label>
+          <label class="check-inline"><input type="checkbox" id="rceShowAddr" checked /> Endereço</label>
+          <label class="check-inline"><input type="checkbox" id="rceShowNotes" checked /> Observações</label>
+          <label class="check-inline"><input type="checkbox" id="rceShowPay" checked /> Pagamento</label>
+          <label class="check-inline"><input type="checkbox" id="rceEscpos" /> Imprimir direto (ESC/POS)</label>
+        </div>
+        <label>Rodapé do cupom
+          <input id="rceFooter" type="text" placeholder="Ex.: WhatsApp (11) 91234-5678 — Obrigado pela preferência!" autocomplete="off" />
+        </label>
+        <div class="receipt-custom-row">
+          <label class="receipt-custom-label">Espaçamento
+            <select id="rceLineHeight" class="compact-select" aria-label="Espaçamento entre linhas">
+              <option value="1.15">1.15</option>
+              <option value="1.25">1.25</option>
+              <option value="1.35" selected>1.35</option>
+              <option value="1.5">1.5</option>
+              <option value="1.65">1.65</option>
+              <option value="1.8">1.8</option>
+            </select>
+          </label>
+          <label class="receipt-custom-label">Zoom
+            <select id="rceZoom" class="compact-select" aria-label="Zoom do cupom">
+              <option value="90">90%</option>
+              <option value="95">95%</option>
+              <option value="100" selected>100%</option>
+              <option value="110">110%</option>
+              <option value="120">120%</option>
+              <option value="130">130%</option>
+              <option value="140">140%</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="receipt-preview-wrap">
+        <div id="receiptPreview" class="receipt-preview receipt-w-80"></div>
+      </div>
+      <div class="confirm-modal-actions receipt-modal-actions">
+        <button type="button" id="receiptPrintBtn" class="confirm">Imprimir</button>
+        <button type="button" id="receiptEscposBtn" class="confirm compact" title="Envia ESC/POS direto para a impressora (porta serial ou USB — Chrome/Edge, HTTPS/localhost)" hidden>Imprimir direto</button>
+        <button type="button" id="receiptPdfBtn" class="confirm compact">Salvar PDF</button>
+        <button type="button" id="receiptCopyBtn" class="ghost compact">Copiar texto</button>
+        <button type="button" id="receiptCloseBtn" class="ghost compact">Fechar</button>
+      </div>
+      <p class="muted receipt-hint">Em “Salvar PDF”, escolha “Salvar como PDF” / “Microsoft Print to PDF” no destino da impressora. “Copiar texto” serve de backup (WhatsApp etc.).</p>
+    </div>
+  </div>
+
+  <div id="bankRowModal" class="confirm-modal" hidden>
+    <div class="confirm-modal-card form-modal-card bank-modal-card" role="dialog" aria-modal="true" aria-labelledby="bankRowTitle">
+      <div class="platform-modal-head">
+        <h3 id="bankRowTitle">Novo registro</h3>
+        <button type="button" id="bankRowCloseBtn" class="ghost compact" aria-label="Fechar">✕</button>
+      </div>
+      <p id="bankRowTableLabel" class="muted bank-row-table-label"></p>
+      <div id="bankRowFields" class="bank-row-fields"></div>
+      <p id="bankRowError" class="error" hidden></p>
+      <div class="confirm-modal-actions">
+        <button type="button" id="bankRowSaveBtn" class="confirm">Salvar</button>
+        <button type="button" id="bankRowCancelBtn" class="ghost compact">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="api-config.js?v=11"></script>
+  <script src="escpos.js?v=2"></script>
+  <script src="serialpos.js?v=3"></script>
+  <script src="app.js?v=207"></script>
+</body>
+</html>
