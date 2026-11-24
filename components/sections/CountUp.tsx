@@ -50,11 +50,12 @@ export function CountUp({ target, duration = 900, className = '', suffix }: Coun
   }, [target, duration])
 
   return (
-    <>
+    // Número e unidade na mesma linha (antes o % caía abaixo do 0 na coluna do item).
+    <span className="trust-value">
       <span ref={ref} className={`trust-num ${className}`}>
         {value}
       </span>
       {suffix && <span className="trust-unit">{suffix}</span>}
-    </>
+    </span>
   )
 }

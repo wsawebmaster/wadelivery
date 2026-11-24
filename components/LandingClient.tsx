@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { BackgroundOrbs } from '@/components/sections/BackgroundOrbs'
+import { ScrollProgress } from '@/components/sections/ScrollProgress'
+import { LandingEffects } from '@/components/sections/LandingEffects'
 import { Navbar } from '@/components/layout/Navbar'
 import { Hero } from '@/components/sections/Hero'
 import { Automation } from '@/components/sections/Automation'
@@ -23,10 +25,13 @@ export function LandingClient() {
 
   return (
     <>
+      <ScrollProgress />
+      <LandingEffects />
       <BackgroundOrbs />
       <Navbar onOpenLead={openLead} />
 
-      <main id="inicio">
+      {/* id="inicio" fica só no hero (alvo do link da marca); antes havia dois elementos com o mesmo id */}
+      <main>
         <Hero onOpenLead={openLead} />
         <Automation onOpenLead={openLead} />
         <Problems />
