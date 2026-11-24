@@ -93,6 +93,15 @@ public class TenantContext(IHttpContextAccessor httpAccessor, IConfiguration con
             return true;
         }
 
+        // 4b. Loja padrão do deployment (Tenancy:DefaultStoreId). O backend é compartilhado com a
+        //     produção da Fabin, cujos fronts atuais não enviam X-Tenant-Slug: sem tenant na
+        //     requisição, vale a loja 1 — o mesmo comportamento da versão em produção.
+        var defaultStore = config.GetValue("Tenancy:DefaultStoreId", 0);
+        if (defaultStore > 0)
+        {
+            storeId = defaultStore;
+            return true;
+        }
         storeId = 0;
         return false;
     }

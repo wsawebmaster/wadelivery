@@ -25,6 +25,9 @@ public sealed class AutomaticTenantProvisioning : Migration
             ALTER TABLE stores ADD COLUMN IF NOT EXISTS "IsTeste" boolean NOT NULL DEFAULT FALSE;
             ALTER TABLE stores ADD COLUMN IF NOT EXISTS "DataCriacao" timestamp with time zone NOT NULL DEFAULT now();
             ALTER TABLE stores ADD COLUMN IF NOT EXISTS "DataAtualizacao" timestamp with time zone NOT NULL DEFAULT now();
+            -- Bancos criados por versões anteriores (produção da Fabin) não têm a coluna Slug:
+            -- sem ela o índice abaixo falha e o catalog-api não sobe.
+            ALTER TABLE stores ADD COLUMN IF NOT EXISTS "Slug" character varying(100) NULL;
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_stores_Slug"
                 ON stores ("Slug") WHERE "Slug" IS NOT NULL;
             """);

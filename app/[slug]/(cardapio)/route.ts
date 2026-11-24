@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { resolvePublicTenant } from '@/lib/public-tenant'
 import { RESERVED_SLUGS } from '@/lib/tenant-hosts'
 import { browserApiBase, hostnameFromHostHeader } from '@/lib/api-base'
+import { externalStoreRedirect } from '@/lib/external-stores'
 import { escapeHtml, renderStorefrontPage, type SsrCategory, type SsrStore } from '@/lib/storefront-ssr'
 
 /**
@@ -54,6 +55,10 @@ async function fetchJson<T>(url: string, slug: string): Promise<T | null> {
 export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug: rawSlug } = await params
   const slug = rawSlug.toLowerCase()
+  // Loja que ainda roda fora da plataforma (Fabin): vai para o site real (o middleware já faz;
+  // aqui é a segunda camada caso a rota seja alcançada sem ele).
+  const external = externalStoreRedirect(`/${slug}`, request.nextUrl.searchParams)
+  if (external) return Response.redirect(external, 307)
   if (RESERVED_SLUGS.includes(slug) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
     return simplePage('Cardápio não encontrado', 'Verifique o link e tente novamente.', { href: '/', label: 'Voltar para a página inicial' }, 404)
   }

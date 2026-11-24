@@ -41,6 +41,9 @@ services:
       Billing__TrialDays: ${BILLING_TRIAL_DAYS:-30}
       Billing__BlockAfterDays: ${BILLING_BLOCK_AFTER_DAYS:-5}
       Billing__DefaultMonthlyFee: ${BILLING_DEFAULT_MONTHLY_FEE:-0}
+      # Rotinas automáticas: ligadas no ambiente local; em produção o padrão do appsettings é desligado.
+      Billing__AutoBlockEnabled: ${BILLING_AUTO_BLOCK_ENABLED:-true}
+      Signup__CleanupEnabled: ${SIGNUP_CLEANUP_ENABLED:-true}
       # IP real do visitante: confia no X-Forwarded-For do gateway (redes privadas do Docker).
       ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
       ForwardedHeaders__KnownNetworks__1: 10.0.0.0/8

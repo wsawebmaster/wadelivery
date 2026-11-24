@@ -26,6 +26,9 @@ public sealed class StoreCleanupService(
 
     public async Task<Result> RunAsync(DateTime nowUtc, CancellationToken ct = default)
     {
+        // Desligada por padrão: em produção a expiração é ligada de propósito (Signup:CleanupEnabled).
+        if (!configuration.GetValue("Signup:CleanupEnabled", false)) return new Result(0, 0);
+        var protectedIds = BillingOptions.ProtectedStores(configuration);
         var abandonAfterDays = configuration.GetValue("Signup:AbandonAfterDays", 7);
         var purgeAfterDays = configuration.GetValue("Signup:PurgeFilesAfterDays", 30);
 
@@ -41,6 +44,7 @@ public sealed class StoreCleanupService(
                 .Where(p => p.Plan == "teste" && p.Active && p.AbandonedAt == null
                     && p.LastAccessAt == null && p.CreatedAt <= limit)
                 .ToListAsync(ct);
+            stale.RemoveAll(p => p.StoreId is int sid && protectedIds.Contains(sid));
             foreach (var p in stale)
             {
                 p.Active = false;
@@ -65,6 +69,7 @@ public sealed class StoreCleanupService(
                     && p.AbandonedAt <= limit && p.FilesPurgedAt == null && p.StoreId != null)
                 .ToListAsync(ct);
             var uploadsRoot = StoreProvisioningService.ResolveUploadsRoot(configuration, environment.ContentRootPath);
+            toPurge.RemoveAll(p => p.StoreId is int sid && protectedIds.Contains(sid));
             foreach (var p in toPurge)
             {
                 try

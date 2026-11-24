@@ -1939,10 +1939,15 @@ tools.MapPost("/{storeId:int}/upload-to-remote", async (
     bool skipDelete,
     SyncSelectionDto? selection,
     RemoteStoreToolsService svc,
+    IConfiguration config,
     CancellationToken ct) =>
 {
     if (!svc.IsAvailable) return ToolsUnavailable();
     if (storeId <= 0) return Results.BadRequest(new { error = "StoreId inválido." });
+    // Escrever no ambiente remoto (produção) exige liberação explícita: RemoteTools:AllowUpload=true.
+    // A prévia (dryRun) só compara e continua disponível.
+    if (!dryRun && !config.GetValue("RemoteTools:AllowUpload", false))
+        return Results.Json(new { error = "Envio para o ambiente remoto desativado (RemoteTools:AllowUpload). Nenhum dado foi alterado." }, statusCode: StatusCodes.Status403Forbidden);
     try
     {
         return Results.Ok(await svc.UploadToRemoteAsync(storeId, dryRun, skipDelete, selection, ct));

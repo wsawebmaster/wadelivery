@@ -29,6 +29,10 @@ WaDelivery é um monorepo com landing Next.js, loja operacional Fabin, painel ad
 
 Não descreva capacidades planejadas como implementadas. Para funcionalidades de tenant, confirmar o contrato OpenAPI e usar a API como fonte de verdade; nunca confiar apenas no `tenant_id` enviado pelo cliente.
 
+## Produção compartilhada com a Fabin
+
+O front publicado deste repositório usa **o mesmo backend e banco** da Fabin (projeto `D:delivery`). Antes de qualquer push, deploy ou mudança de backend, siga `docs/PUBLICACAO.md`. Mantenha: `vercel.json` com `ignoreCommand` (só publica na branch `release` ou com `WADELIVERY_DEPLOY_ENABLED=1`); `Tenancy:DefaultStoreId=1` (os fronts atuais da Fabin não enviam `X-Tenant-Slug`); rotinas automáticas desligadas por padrão (`Billing:AutoBlockEnabled`, `Signup:CleanupEnabled`), `Platform:ProtectedStoreIds=[1]` e `RemoteTools:AllowUpload=false`; migrations e seeder **apenas aditivos** e idempotentes (o banco de produção não tem colunas novas como `stores.Slug`); build em Release sem dependências que exijam licença. Toda mudança de backend deve passar no ensaio de compatibilidade descrito no documento.
+
 ## Regras de implementação
 
 - Faça alterações pequenas, leia os consumidores diretos e atualize rotas, links e estilos relacionados.

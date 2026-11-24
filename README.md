@@ -40,6 +40,8 @@ O login da plataforma exige o perfil `Dev`; os usuários e senhas são definidos
 
 Após criar uma loja, use o endereço público exibido e entre no painel da loja em `/{slug}/admin` com o e-mail e a senha temporária mostrados na confirmação. Cada loja tem sessão própria; usuários de outra loja e o perfil `Dev` são recusados ali (a plataforma usa `/admin`). A senha não é enviada por e-mail. A URL pública segue o formato `https://wadelivery.com.br/{slug}` (caminho, não subdomínio).
 
+> **Publicação:** o front publicado compartilha backend e banco com a Fabin, cliente em produção pelo projeto `D:delivery`. Push em `main` não publica (trava no `vercel.json`). Antes de publicar ou atualizar o backend, siga [docs/PUBLICACAO.md](docs/PUBLICACAO.md).
+
 ## Executar localmente
 
 Pré-requisitos: Node.js/npm, .NET 10 SDK e, para o ambiente completo, Docker com Compose.
