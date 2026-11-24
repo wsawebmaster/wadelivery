@@ -26,25 +26,36 @@ function isCreatedStoreResponse(value: unknown): value is CreatedStoreResponse {
     && typeof result.createdAt === 'string'
 }
 
+/** Erro do cadastro; field indica o campo recusado pela API (ex.: "Email"). */
+export class StoreSignupError extends Error {
+  constructor(message: string, public readonly field?: string) {
+    super(message)
+    this.name = 'StoreSignupError'
+  }
+}
+
 export async function createStore(formData: FormData): Promise<CreatedStoreResponse> {
+  const apiBaseUrl = getApiBaseUrl()
   let response: Response
   try {
-    response = await fetch(`${getApiBaseUrl()}/api/lojas/criar-completa`, {
+    response = await fetch(`${apiBaseUrl}/api/lojas/criar-completa`, {
       method: 'POST',
       headers: { Accept: 'application/json' },
       body: formData,
       cache: 'no-store',
     })
   } catch {
-    throw new Error('Não foi possível conectar à API. Verifique se a aplicação está iniciada.')
+    throw new Error(`Não foi possível conectar à API (${apiBaseUrl}). Verifique se a aplicação está iniciada e acessível nesta rede.`)
   }
 
   if (!response.ok) {
     let message = `Não foi possível criar a loja (${response.status}).`
+    let field: string | undefined
     try {
       const body: unknown = await response.json()
       if (typeof body === 'object' && body !== null) {
         const errorBody = body as Record<string, unknown>
+        if (typeof errorBody.field === 'string') field = errorBody.field
         if (typeof errorBody.error === 'string') {
           message = errorBody.error
         } else if (typeof errorBody.errors === 'object' && errorBody.errors !== null) {
@@ -59,7 +70,7 @@ export async function createStore(formData: FormData): Promise<CreatedStoreRespo
     } catch {
       // Algumas respostas de proxy podem não ter corpo JSON.
     }
-    throw new Error(message)
+    throw new StoreSignupError(message, field)
   }
 
   const body: unknown = await response.json()

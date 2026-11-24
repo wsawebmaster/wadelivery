@@ -6,6 +6,9 @@ namespace Catalog.Api.Services;
 public interface ICaptchaValidationService
 {
     Task<bool> ValidateAsync(string? token, string? remoteIp, CancellationToken ct);
+
+    /// <summary>False quando o CAPTCHA obrigatório não está configurado (cadastro indisponível).</summary>
+    bool IsAvailable { get; }
 }
 
 public sealed class CaptchaValidationService(
@@ -13,10 +16,21 @@ public sealed class CaptchaValidationService(
     IHttpClientFactory httpClientFactory,
     ILogger<CaptchaValidationService> logger) : ICaptchaValidationService
 {
+    public bool IsAvailable =>
+        configuration.GetValue("Captcha:Enabled", false)
+            ? !string.IsNullOrWhiteSpace(configuration["Captcha:SecretKey"] ?? configuration["Captcha:Secret"])
+            : configuration.GetValue("Captcha:AllowDisabled", false);
+
     public async Task<bool> ValidateAsync(string? token, string? remoteIp, CancellationToken ct)
     {
         var enabled = configuration.GetValue("Captcha:Enabled", false);
-        if (!enabled) return true;
+        if (!enabled)
+        {
+            // CAPTCHA é obrigatório: desligado só vale com Captcha:AllowDisabled (desenvolvimento/testes).
+            if (configuration.GetValue("Captcha:AllowDisabled", false)) return true;
+            logger.LogWarning("Cadastro recusado: CAPTCHA desligado (configure Captcha:Enabled/SecretKey ou Captcha:AllowDisabled em desenvolvimento).");
+            return false;
+        }
 
         if (string.IsNullOrWhiteSpace(token))
             return false;

@@ -67,6 +67,13 @@ public class TenantResolverService
         return result;
     }
 
+    /// <summary>Descarta o cache do slug (ex.: segmento alterado pela plataforma).</summary>
+    public void Invalidate(string? slug)
+    {
+        var normalized = CatalogInputValidation.NormalizeTenantSlug(slug);
+        if (!string.IsNullOrWhiteSpace(normalized)) _cache.Remove($"tenant:slug:{normalized}");
+    }
+
     private async Task<TenantResolveDto?> ResolveFromPostgresAsync(string slug, CancellationToken ct)
     {
         try

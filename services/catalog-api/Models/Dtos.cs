@@ -365,7 +365,15 @@ public record PlatformStoreDto(
     StoreStatsDto? Stats = null,
     /// <summary>Bloqueada automaticamente por mensalidade em atraso.</summary>
     bool BillingBlocked = false,
-    DateTime? BillingBlockSuspendedUntil = null);
+    DateTime? BillingBlockSuspendedUntil = null,
+    /// <summary>Loja de teste desativada por abandono.</summary>
+    DateTime? AbandonedAt = null);
+
+/// <summary>Ação registrada pelo painel da plataforma (ex.: lembrete de cobrança pelo WhatsApp).</summary>
+public record PlatformAuditNoteRequest(string Action, string? Note = null);
+
+/// <summary>Troca do segmento pela plataforma: ApplyPalette aplica as cores; ApplySamples troca os produtos de exemplo.</summary>
+public record SetPlatformSegmentRequest(string? Segment, bool ApplyPalette = false, bool ApplySamples = false);
 
 /// <summary>Ajuste da cobrança da loja (painel da plataforma → Cobrança). Campos nulos não mudam.</summary>
 public class UpdatePlatformBillingRequest

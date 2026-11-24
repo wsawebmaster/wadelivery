@@ -65,8 +65,17 @@ public class CorsLanTests
     [Theory]
     [InlineData("http://localhost:8080")]
     [InlineData("http://192.168.0.10:8080")]
+    [InlineData("http://192.168.15.7:3000")] // Next.js aberto pelo IP da rede (celular)
     public void Lan_hosts_on_allowed_ports_are_still_allowed(string origin)
     {
         Assert.True(CorsLan.IsOriginAllowed(origin, []));
+    }
+
+    [Theory]
+    [InlineData("http://203.0.113.5:3000")]
+    [InlineData("http://192.168.15.7:4000")]
+    public void Lan_port_3000_does_not_open_public_hosts_or_other_ports(string origin)
+    {
+        Assert.False(CorsLan.IsOriginAllowed(origin, []));
     }
 }

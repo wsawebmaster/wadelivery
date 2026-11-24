@@ -178,12 +178,16 @@ public class JsonPlatformStoreRepository : IPlatformStoreRepository
             UpdatedAt = DateTime.UtcNow
         }, ct);
 
+    public Task<PlatformStoreDto?> SetSegmentAsync(Guid id, string segment, CancellationToken ct = default) =>
+        MutateAsync(id, current => current with { Segment = segment, UpdatedAt = DateTime.UtcNow }, ct);
+
     public Task<PlatformStoreDto?> SetBlockedAsync(Guid id, bool blocked, Services.BillingOptions options, CancellationToken ct = default) =>
         MutateAsync(id, current => current with
         {
             Active = !blocked,
             Status = blocked ? "inactive" : "active",
             BillingBlocked = false,
+            AbandonedAt = blocked ? current.AbandonedAt : null,
             UpdatedAt = DateTime.UtcNow
         }, ct);
 

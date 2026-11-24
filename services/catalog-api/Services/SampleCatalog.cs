@@ -1,3 +1,5 @@
+using Catalog.Api.Data;
+
 namespace Catalog.Api.Services;
 
 /// <summary>Produto de exemplo criado com a loja (foto em Assets/sample-products).</summary>
@@ -54,6 +56,69 @@ public static class SampleCatalog
     };
 
     private static readonly SampleMenu Fallback = Menus["lanchonete"];
+
+    /// <summary>Títulos de categoria criados pelos cardápios de exemplo (inclui o modelo antigo).</summary>
+    public static readonly HashSet<string> SampleCategoryTitles = new(
+        Menus.Values.SelectMany(m => m.Categories).Concat(["Lanches", "Bebidas", "Porções"]),
+        StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Produto criado pelo cadastro: foto com prefixo exemplo- ou o antigo "Produto de exemplo".</summary>
+    public static bool IsSampleProduct(string? name, string? imageUrl) =>
+        (imageUrl ?? "").Contains("/products/" + PhotoPrefix, StringComparison.OrdinalIgnoreCase)
+        || string.Equals((name ?? "").Trim(), "Produto de exemplo", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Cria os produtos de exemplo do cardápio nas categorias indicadas (mesma ordem de menu.Categories),
+    /// copiando as fotos para uploads/products. Arquivos gravados entram em createdFiles (rollback).
+    /// Foto ausente/corrompida não impede: o produto fica sem foto.
+    /// </summary>
+    public static async Task<List<ProductEntity>> CreateProductsAsync(
+        SampleMenu menu,
+        IReadOnlyList<CategoryEntity> categories,
+        int storeId,
+        string slug,
+        string uploadsRoot,
+        List<string> createdFiles,
+        int firstSortOrder,
+        CancellationToken ct)
+    {
+        var products = new List<ProductEntity>();
+        var sortOrder = firstSortOrder;
+        foreach (var item in menu.Products)
+        {
+            products.Add(new ProductEntity
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                StoreId = storeId,
+                CategoryId = categories[Math.Clamp(item.CategoryIndex, 0, categories.Count - 1)].Id,
+                Name = item.Name,
+                Description = item.Description,
+                Price = item.Price,
+                ImageUrl = await SavePhotoAsync(item, slug, uploadsRoot, createdFiles, ct),
+                Available = true,
+                ShowInMenu = true,
+                SortOrder = sortOrder++
+            });
+        }
+        return products;
+    }
+
+    private static async Task<string?> SavePhotoAsync(SampleProduct item, string slug, string uploadsRoot, List<string> createdFiles, CancellationToken ct)
+    {
+        var path = Path.Combine(AssetsDirectory, item.PhotoFile);
+        if (!File.Exists(path)) return null;
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            var url = await ImageStorage.SaveProductPhotoAsync(stream, uploadsRoot, $"{PhotoPrefix}{slug}-{item.Name}", ct);
+            createdFiles.Add(url);
+            return url;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
 
     public static SampleMenu For(string? segment) =>
         Menus.TryGetValue((segment ?? "").Trim().ToLowerInvariant(), out var menu) ? menu : Fallback;

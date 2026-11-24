@@ -1,6 +1,7 @@
 // Cliente HTTP do painel /admin. Fala com a API do catálogo/plataforma
 // (gateway :5100 no stack completo, catalog-api :5101 no modo leve).
 import { clearAdminSession, getAdminSession } from './admin-session'
+import { browserApiBase } from './api-base'
 
 export class ApiError extends Error {
   status: number
@@ -23,7 +24,10 @@ export function getApiBaseUrl(): string {
   }
 
   const env = process.env.NEXT_PUBLIC_API_BASE_URL
-  if (env && env.trim()) return env.trim().replace(/\/$/, '')
+  if (env && env.trim()) {
+    // Página aberta pelo IP da rede (celular): "localhost" vira o host da página.
+    return browserApiBase(env, typeof window !== 'undefined' ? window.location.hostname : null)
+  }
 
   if (typeof window !== 'undefined') {
     const host = window.location.hostname
@@ -144,6 +148,7 @@ export interface PlatformStore {
   payments?: PlatformPayment[]
   billingBlocked?: boolean
   billingBlockSuspendedUntil?: string | null
+  abandonedAt?: string | null
   [key: string]: unknown
 }
 
@@ -185,6 +190,124 @@ export function registerPlatformPayment(
 
 export function setPlatformStoreBlocked(id: string, blocked: boolean): Promise<PlatformStore> {
   return adminFetch<PlatformStore>(`/api/v1/admin/platform-stores/${id}/block`, jsonInit('POST', { blocked }))
+}
+
+export interface SegmentChangeResult {
+  store: PlatformStore
+  applied: { colors: boolean; logo: boolean; samplesRemoved: number; samplesAdded: number }
+}
+
+export function setPlatformSegment(
+  id: string,
+  segment: string,
+  options: { applyPalette: boolean; applySamples: boolean },
+): Promise<SegmentChangeResult> {
+  return adminFetch<SegmentChangeResult>(
+    `/api/v1/admin/platform-stores/${id}/segment`,
+    jsonInit('PATCH', { segment, ...options }),
+  )
+}
+
+export interface SegmentPalette {
+  segment: string
+  name: string
+  corPrimaria: string
+  corSecundaria: string
+  corFundo: string
+  corTexto: string
+}
+
+export function fetchSegmentPalettes(): Promise<{ segments: SegmentPalette[] }> {
+  return adminFetch<{ segments: SegmentPalette[] }>('/api/v1/segment-palettes', { auth: false })
+}
+
+// ── Página da loja (plataforma) ──
+const storePath = (id: string) => `/api/v1/admin/platform-stores/${id}`
+
+export function fetchPlatformStore(id: string): Promise<PlatformStore> {
+  return adminFetch<PlatformStore>(storePath(id))
+}
+
+/** PUT é upsert completo: envie o objeto atual mesclado com as alterações. */
+export function updatePlatformStore(id: string, data: Record<string, unknown>): Promise<PlatformStore> {
+  return adminFetch<PlatformStore>(storePath(id), jsonInit('PUT', data))
+}
+
+export function deletePlatformStore(id: string): Promise<void> {
+  return adminFetch<void>(storePath(id), { method: 'DELETE' })
+}
+
+export interface StoreUser {
+  id: number
+  username: string
+  role: string
+  storeId: number | null
+  displayName?: string | null
+  hasPin?: boolean
+}
+
+export function fetchStoreUsers(id: string): Promise<StoreUser[]> {
+  return adminFetch<StoreUser[]>(`${storePath(id)}/users`)
+}
+
+export function createStoreUser(
+  id: string,
+  input: { username: string; password: string; role: string; displayName?: string },
+): Promise<StoreUser> {
+  return adminFetch<StoreUser>(`${storePath(id)}/users`, jsonInit('POST', input))
+}
+
+export function resetStoreUserPassword(id: string, userId: number, password: string): Promise<{ ok: boolean }> {
+  return adminFetch<{ ok: boolean }>(`${storePath(id)}/users/${userId}/reset-password`, jsonInit('POST', { password }))
+}
+
+export function deleteStoreUser(id: string, userId: number): Promise<void> {
+  return adminFetch<void>(`${storePath(id)}/users/${userId}`, { method: 'DELETE' })
+}
+
+export function uploadPlatformLogo(id: string, file: File): Promise<PlatformStore> {
+  const body = new FormData()
+  body.append('file', file)
+  return adminFetch<PlatformStore>(`${storePath(id)}/logo`, { method: 'POST', body })
+}
+
+export interface AuditEntry {
+  id: number
+  at: string
+  actor: string
+  action: string
+  platformStoreId: string | null
+  storeId: number | null
+  storeName: string | null
+  details: Record<string, unknown> | null
+}
+
+export function fetchStoreAudit(id: string, limit = 50): Promise<AuditEntry[]> {
+  return adminFetch<AuditEntry[]>(`${storePath(id)}/audit?limit=${limit}`)
+}
+
+export function fetchPlatformAudit(limit = 20): Promise<AuditEntry[]> {
+  return adminFetch<AuditEntry[]>(`/api/v1/admin/platform-stores/audit?limit=${limit}`)
+}
+
+export function logReminder(id: string, note?: string): Promise<void> {
+  return adminFetch<void>(`${storePath(id)}/audit`, jsonInit('POST', { action: 'reminder.whatsapp', note }))
+}
+
+export interface PlatformStoreActivity {
+  platformStoreId: string
+  storeId: number | null
+  orders30d: number
+  ordersTotal: number
+  lastOrderAt: string | null
+  menuViews30d: number
+  ownProducts: number
+  sampleProducts: number
+  ownerLoggedIn: boolean
+}
+
+export function fetchPlatformOverview(): Promise<PlatformStoreActivity[]> {
+  return adminFetch<PlatformStoreActivity[]>('/api/v1/admin/platform-stores/overview')
 }
 
 export function runPlatformBilling(): Promise<{ changed: number }> {

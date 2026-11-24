@@ -23,7 +23,7 @@
     "payments": [],
     "active": true,
     "createdAt": "2026-07-31T00:00:00Z",
-    "updatedAt": "2026-11-23T02:46:53.5055125Z",
+    "updatedAt": "2026-11-24T04:02:37.9133068Z",
     "storeId": 1,
     "cnpj": "00000000000000",
     "razaoSocial": "Fabin Lanches LTDA",
@@ -43,11 +43,12 @@
     "apiKey": null,
     "webhookUrl": null,
     "gallery": [],
-    "lastAccessAt": "2026-11-23T02:46:53.5050441Z",
+    "lastAccessAt": "2026-11-24T04:02:37.9129589Z",
     "backUsername": null,
     "backPassword": null,
     "stats": null,
     "billingBlocked": false,
-    "billingBlockSuspendedUntil": null
+    "billingBlockSuspendedUntil": null,
+    "abandonedAt": null
   }
 ]

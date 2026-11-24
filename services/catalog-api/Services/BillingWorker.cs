@@ -4,7 +4,7 @@ namespace Catalog.Api.Services;
 
 /// <summary>
 /// Reavalia a cobrança das lojas periodicamente (fim do teste grátis, vencimento, bloqueio
-/// após a tolerância). Intervalo em Billing:IntervalMinutes (padrão 60, mínimo 5).
+/// após a tolerância) e expira lojas de teste abandonadas (StoreCleanupService). Intervalo em Billing:IntervalMinutes (padrão 60, mínimo 5).
 /// </summary>
 public sealed class BillingWorker(
     IServiceScopeFactory scopes,
@@ -25,6 +25,11 @@ public sealed class BillingWorker(
                 var repo = scope.ServiceProvider.GetRequiredService<IPlatformStoreRepository>();
                 var changed = await repo.EvaluateBillingAsync(DateTime.UtcNow, BillingOptions.FromConfig(config), stoppingToken);
                 if (changed > 0) logger.LogInformation("Cobrança: {Count} loja(s) atualizada(s).", changed);
+
+                // Lojas de teste abandonadas (dono nunca entrou): desativa e, depois, apaga os arquivos.
+                var cleanup = await scope.ServiceProvider.GetRequiredService<StoreCleanupService>().RunAsync(DateTime.UtcNow, stoppingToken);
+                if (cleanup.Abandoned > 0 || cleanup.Purged > 0)
+                    logger.LogInformation("Limpeza: {Abandoned} loja(s) desativada(s) por abandono, {Purged} com arquivos apagados.", cleanup.Abandoned, cleanup.Purged);
             }
             catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
             {

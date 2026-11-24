@@ -12,7 +12,9 @@ public sealed class LojasController(
     IServiceProvider services,
     TenantResolverService tenantResolver,
     ICaptchaValidationService captcha,
-    SignupGuardService signupGuard) : ControllerBase
+    SignupGuardService signupGuard,
+    EmailDomainValidator emailValidator,
+    IConfiguration configuration) : ControllerBase
 {
     [HttpGet("slug/{slug}")]
     public async Task<IActionResult> ObterPorSlug(string slug, CancellationToken cancellationToken)
@@ -42,18 +44,31 @@ public sealed class LojasController(
         if (validationError is not null)
             return BadRequest(new { error = validationError });
 
+        if (!captcha.IsAvailable)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                error = "Cadastro temporariamente indisponível. Tente novamente mais tarde."
+            });
+
         var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
         if (!await captcha.ValidateAsync(request.CaptchaToken, remoteIp, cancellationToken))
             return BadRequest(new { error = "Não foi possível validar a verificação de segurança. Atualize a página e tente novamente." });
 
         var normalizedEmail = (request.Email ?? "").Trim().ToLowerInvariant();
-        var guardError = await signupGuard.CheckAsync(normalizedEmail, cancellationToken);
+        // E-mail com domínio real (reservados/descartáveis/sem MX são recusados).
+        var emailError = await emailValidator.ValidateAsync(normalizedEmail, cancellationToken);
+        if (emailError is not null)
+            return BadRequest(new { error = emailError, field = "Email" });
+
+        // IP real do visitante (o gateway envia X-Forwarded-For; ver ForwardedHeaders:KnownNetworks).
+        var signupIpHash = SignupGuardService.HashIp(remoteIp, configuration);
+        var guardError = await signupGuard.CheckAsync(normalizedEmail, signupIpHash, cancellationToken);
         if (guardError is not null)
             return StatusCode(StatusCodes.Status429TooManyRequests, new { error = guardError });
 
         try
         {
-            var result = await provisioning.CreateAsync(request, cancellationToken);
+            var result = await provisioning.CreateAsync(request, cancellationToken, signupIpHash);
             return Created(result.PublicUrl, result);
         }
         catch (StoreProvisioningConflictException ex)

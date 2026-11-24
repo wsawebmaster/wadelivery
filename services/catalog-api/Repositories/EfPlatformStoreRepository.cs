@@ -9,7 +9,8 @@ namespace Catalog.Api.Repositories;
 public class EfPlatformStoreRepository(
     CatalogDbContext db,
     ICatalogRepository catalog,
-    IMemoryCache cache) : IPlatformStoreRepository
+    IMemoryCache cache,
+    Services.PlatformAuditService? audit = null) : IPlatformStoreRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -371,22 +372,35 @@ public class EfPlatformStoreRepository(
         entity.BackPassword,
         DeserializeStats(entity.StatsJson),
         entity.BillingBlocked,
-        entity.BillingBlockSuspendedUntil);
+        entity.BillingBlockSuspendedUntil,
+        entity.AbandonedAt);
 
     public async Task<int> EvaluateBillingAsync(DateTime nowUtc, Services.BillingOptions options, CancellationToken ct = default)
     {
         var stores = await db.PlatformStores.ToListAsync(ct);
         var changed = 0;
+        var events = new List<(PlatformStoreEntity Store, string Action)>();
         foreach (var store in stores)
         {
+            var (wasBlocked, wasCourtesy) = (store.BillingBlocked, store.Courtesy);
             if (!Services.BillingPolicy.Apply(store, nowUtc, options)) continue;
             store.UpdatedAt = DateTime.UtcNow;
             changed++;
+            if (!wasBlocked && store.BillingBlocked) events.Add((store, "billing.auto-block"));
+            if (wasBlocked && !store.BillingBlocked) events.Add((store, "billing.auto-unblock"));
+            if (wasCourtesy && !store.Courtesy) events.Add((store, "billing.trial-ended"));
         }
         if (changed > 0)
         {
             await db.SaveChangesAsync(ct);
             InvalidateCache();
+        }
+        // Histórico das mudanças automáticas (rotina de cobrança).
+        if (audit is not null)
+        {
+            foreach (var (store, action) in events)
+                await audit.LogAsync(Services.PlatformAuditService.SystemActor, action, store.Id, store.StoreId,
+                    new { store.PaymentStatus, store.NextDueAt, daysOverdue = Services.BillingPolicy.DaysOverdue(store.NextDueAt, nowUtc) }, ct);
         }
         return changed;
     }
@@ -411,6 +425,17 @@ public class EfPlatformStoreRepository(
         return Map(entity);
     }
 
+    public async Task<PlatformStoreDto?> SetSegmentAsync(Guid id, string segment, CancellationToken ct = default)
+    {
+        var entity = await db.PlatformStores.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null) return null;
+        entity.Segment = segment;
+        entity.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        InvalidateCache();
+        return Map(entity);
+    }
+
     public async Task<PlatformStoreDto?> SetBlockedAsync(Guid id, bool blocked, Services.BillingOptions options, CancellationToken ct = default)
     {
         var entity = await db.PlatformStores.FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -425,6 +450,7 @@ public class EfPlatformStoreRepository(
         else
         {
             Services.BillingPolicy.Unblock(entity);
+            entity.AbandonedAt = null;
             // Desbloqueio manual de loja ainda em atraso: dá alguns dias antes de bloquear de novo.
             if (Services.BillingPolicy.DaysOverdue(entity.NextDueAt, DateTime.UtcNow) > 0 && !entity.Courtesy && entity.MonthlyFee > 0)
                 entity.BillingBlockSuspendedUntil = DateTime.UtcNow.AddDays(options.ManualUnblockGraceDays);

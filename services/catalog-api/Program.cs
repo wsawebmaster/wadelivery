@@ -90,6 +90,7 @@ if (usePostgres)
     builder.Services.AddScoped<IPinSessionStore, EfPinSessionStore>();
     // Cobrança de mensalidades: fim do teste grátis, vencimento e bloqueio automático.
     builder.Services.AddHostedService<Catalog.Api.Services.BillingWorker>();
+    builder.Services.AddSingleton<Catalog.Api.Services.StoreCleanupService>();
 
     // Barramento de invalidação de cache (LISTEN/NOTIFY no PostgreSQL) — somente com
     // Persistence=PostgreSQL; o modo Json (usado pelos testes) não registra o serviço.
@@ -111,6 +112,15 @@ builder.Services.AddSingleton(new DbExplorerService(dbConn));
 
 builder.Services.AddScoped<SignupGuardService>();
 builder.Services.AddHttpClient("captcha", c => c.Timeout = TimeSpan.FromSeconds(10));
+// Verificação do domínio do e-mail no cadastro (MX via DNS-over-HTTPS, timeout curto).
+builder.Services.AddHttpClient(EmailDomainValidator.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(3));
+builder.Services.AddSingleton<EmailDomainValidator>();
+// Histórico de ações da plataforma (auditoria).
+builder.Services.AddSingleton<Catalog.Api.Services.PlatformAuditService>();
+// Visão consolidada das lojas para o painel da plataforma (pedidos, acessos, produtos).
+builder.Services.AddSingleton<Catalog.Api.Services.PlatformOverviewService>();
+// Troca de segmento pela plataforma (cores, logo padrão e produtos de exemplo).
+builder.Services.AddSingleton<Catalog.Api.Services.SegmentApplier>();
 builder.Services.AddScoped<ICaptchaValidationService, CaptchaValidationService>();
 
 // Resolução de subdomínio → loja (x-tenant-slug). Funciona em Json (slug padrão) e PostgreSQL com cache em memória.
@@ -1282,10 +1292,13 @@ admin.MapGet("/images/missing", async (ICatalogRepository repo, CancellationToke
 });
 
 var analytics = api.MapGroup("/analytics");
-analytics.MapPost("/pageview", (TrafficPageviewRequest? body, TrafficStatsService traffic) =>
+analytics.MapPost("/pageview", (TrafficPageviewRequest? body, TrafficStatsService traffic, TenantContext tenant) =>
 {
     var path = body?.Path;
     traffic.Record("pageview", string.IsNullOrWhiteSpace(path) ? "home" : path);
+    // Também por loja (cardápio envia X-Tenant-Slug): base do "acessos 30d" no painel da plataforma.
+    if (tenant.TryGetStoreId(out var pageStoreId) && pageStoreId > 0)
+        traffic.Record("store", TrafficStatsService.StoreRoute(pageStoreId));
     return Results.StatusCode(StatusCodes.Status202Accepted);
 }).RequireRateLimiting("analytics-pageview");
 
@@ -1337,6 +1350,8 @@ storeStats.MapGet("/store-stats", async (TenantContext tenant, StoreStatsService
     Results.Ok(await svc.ComputeAsync(tenant.StoreId, ct)));
 
 var platform = api.MapGroup("/admin/platform-stores").RequireAuthorization("PlatformDev");
+// Auditoria das alterações feitas pela plataforma (uma regra para todas as rotas do grupo).
+platform.AddEndpointFilter(Catalog.Api.Services.PlatformAuditFilter.InvokeAsync);
 
 platform.MapGet("/", async (
     IPlatformStoreRepository repo,
@@ -1478,11 +1493,84 @@ platform.MapPatch("/{id:guid}/billing", async (Guid id, UpdatePlatformBillingReq
     return Results.Ok(await repo.GetAsync(id, ct));
 });
 
+// Segmento da loja (lanchonete, pizzaria…): define cores sugeridas, cozinha no Google e filtros.
+// ApplyPalette aplica as cores do segmento (e refaz o logo padrão nelas); ApplySamples troca os
+// produtos de exemplo pelos do novo segmento. Itens criados pelo lojista nunca são alterados.
+platform.MapPatch("/{id:guid}/segment", async (
+    Guid id,
+    SetPlatformSegmentRequest body,
+    IPlatformStoreRepository repo,
+    Catalog.Api.Services.SegmentApplier applier,
+    TenantResolverService tenantResolver,
+    CancellationToken ct) =>
+{
+    var segment = (body.Segment ?? "").Trim().ToLowerInvariant();
+    if (!Catalog.Api.Services.SegmentPalettes.All.Any(p => p.Segment == segment))
+        return Results.BadRequest(new { error = "Segmento inválido." });
+
+    var updated = await repo.SetSegmentAsync(id, segment, ct);
+    if (updated is null) return Results.NotFound(new { error = "Loja não encontrada." });
+
+    Catalog.Api.Services.SegmentApplier.Result? applied = null;
+    if (updated.StoreId is int storeId && storeId > 0)
+    {
+        applied = await applier.ApplyAsync(storeId, segment, body.ApplyPalette, body.ApplySamples, ct);
+        // O registro da plataforma mostra o mesmo logo da loja.
+        if (applied.NewLogoUrl is not null)
+            updated = await repo.SetLogoAsync(id, applied.NewLogoUrl, ct) ?? updated;
+        tenantResolver.Invalidate(applied.Slug);
+    }
+    return Results.Ok(new
+    {
+        store = updated,
+        applied = new
+        {
+            colors = applied?.ColorsApplied ?? false,
+            logo = applied?.NewLogoUrl is not null,
+            samplesRemoved = applied?.SamplesRemoved ?? 0,
+            samplesAdded = applied?.SamplesAdded ?? 0,
+        },
+    });
+});
+
 // Bloqueio/desbloqueio manual (o mesmo bloqueio usado pela inadimplência).
 platform.MapPost("/{id:guid}/block", async (Guid id, SetPlatformStoreBlockedRequest body, IPlatformStoreRepository repo, IConfiguration config, CancellationToken ct) =>
 {
     var updated = await repo.SetBlockedAsync(id, body.Blocked, Catalog.Api.Services.BillingOptions.FromConfig(config), ct);
     return updated is null ? Results.NotFound(new { error = "Loja não encontrada." }) : Results.Ok(updated);
+});
+
+// Atividade de todas as lojas (dashboard e lista da plataforma).
+platform.MapGet("/overview", async (Catalog.Api.Services.PlatformOverviewService overview, CancellationToken ct) =>
+    Results.Ok(await overview.GetAsync(ct)));
+
+// Histórico geral (atividade recente) e por loja.
+platform.MapGet("/audit", async (int? limit, Catalog.Api.Services.PlatformAuditService audit, CancellationToken ct) =>
+    Results.Ok(await audit.ListAsync(null, limit ?? 100, ct)));
+
+platform.MapGet("/{id:guid}/audit", async (Guid id, int? limit, Catalog.Api.Services.PlatformAuditService audit, CancellationToken ct) =>
+    Results.Ok(await audit.ListAsync(id, limit ?? 50, ct)));
+
+// Registro de ação feita fora da API (hoje: lembrete de cobrança aberto no WhatsApp).
+platform.MapPost("/{id:guid}/audit", async (Guid id, PlatformAuditNoteRequest body, ClaimsPrincipal user,
+    IPlatformStoreRepository repo, Catalog.Api.Services.PlatformAuditService audit, CancellationToken ct) =>
+{
+    if (body.Action != "reminder.whatsapp")
+        return Results.BadRequest(new { error = "Ação não permitida." });
+    var store = await repo.GetAsync(id, ct);
+    if (store is null) return Results.NotFound(new { error = "Loja não encontrada." });
+    var note = body.Note is { Length: > 300 } n ? n[..300] : body.Note;
+    await audit.LogAsync(Catalog.Api.Services.PlatformAuditService.ActorOf(user), body.Action, id, store.StoreId, new { note }, ct);
+    return Results.NoContent();
+});
+
+// Expira agora as lojas de teste abandonadas (além da execução periódica; só PostgreSQL).
+platform.MapPost("/cleanup/run", async (IServiceProvider sp, CancellationToken ct) =>
+{
+    var cleanup = sp.GetService<Catalog.Api.Services.StoreCleanupService>();
+    if (cleanup is null) return Results.Ok(new { abandoned = 0, purged = 0 });
+    var result = await cleanup.RunAsync(DateTime.UtcNow, ct);
+    return Results.Ok(new { abandoned = result.Abandoned, purged = result.Purged });
 });
 
 // Reavalia a cobrança de todas as lojas agora (além da execução periódica).
@@ -1599,8 +1687,12 @@ platform.MapPost("/{id:guid}/users", async (Guid id, CreateStoreUserRequest body
 
 platform.MapPost("/{id:guid}/users/{userId:int}/reset-password", async (Guid id, int userId, ResetStoreUserPasswordRequest body, IPlatformStoreRepository repo, IAdminUserRepository users, CancellationToken ct) =>
 {
-    if (await repo.GetAsync(id, ct) is null)
+    var store = await repo.GetAsync(id, ct);
+    if (store is null)
         return Results.NotFound(new { error = "Loja não encontrada." });
+    // O usuário precisa ser desta loja (não permite redefinir senha de outra loja pelo id).
+    if (!(await users.ListStoreUsersAsync(store.StoreId, ct)).Any(u => u.Id == userId))
+        return Results.NotFound(new { error = "Usuário não encontrado nesta loja." });
     if (string.IsNullOrWhiteSpace(body.Password) || body.Password.Length < 6)
         return Results.BadRequest(new { error = "Senha muito curta (mín. 6 caracteres)." });
     var ok = await users.ResetPasswordAsync(userId, body.Password, ct);
@@ -1609,8 +1701,11 @@ platform.MapPost("/{id:guid}/users/{userId:int}/reset-password", async (Guid id,
 
 platform.MapDelete("/{id:guid}/users/{userId:int}", async (Guid id, int userId, IPlatformStoreRepository repo, IAdminUserRepository users, CancellationToken ct) =>
 {
-    if (await repo.GetAsync(id, ct) is null)
+    var store = await repo.GetAsync(id, ct);
+    if (store is null)
         return Results.NotFound(new { error = "Loja não encontrada." });
+    if (!(await users.ListStoreUsersAsync(store.StoreId, ct)).Any(u => u.Id == userId))
+        return Results.NotFound(new { error = "Usuário não encontrado nesta loja." });
     var ok = await users.DeleteAsync(userId, ct);
     return ok ? Results.NoContent() : Results.NotFound(new { error = "Usuário não encontrado." });
 });

@@ -179,6 +179,30 @@ public sealed class TrafficStatsService : IHostedService, IDisposable
     /// Contagem de pageviews (acessos ao cardápio) na janela de N dias e no total retido.
     /// Total considera todos os buckets pageview presentes (dentro da janela de retenção).
     /// </summary>
+    /// <summary>Rota usada para contar os acessos ao cardápio de cada loja.</summary>
+    public static string StoreRoute(int storeId) => $"store-{storeId}";
+
+    /// <summary>Acessos ao cardápio de uma loja (registrados com Record("store", StoreRoute(id))).</summary>
+    public (long Last30d, long Total) GetStorePageviews(int storeId, int days)
+    {
+        days = Math.Clamp(days, 1, _retentionDays);
+        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, SaoPaulo);
+        var today = DateOnly.FromDateTime(now);
+        var from = today.AddDays(-(days - 1));
+        var wanted = StoreRoute(storeId);
+
+        long period = 0;
+        long total = 0;
+        foreach (var (key, count) in _buckets)
+        {
+            if (!TryParseKey(key, out var date, out _, out var source, out var route)) continue;
+            if (source != "store" || route != wanted) continue;
+            total += count;
+            if (date >= from && date <= today) period += count;
+        }
+        return (period, total);
+    }
+
     public (long Last30d, long Total) GetPageviewCounts(int days)
     {
         days = Math.Clamp(days, 1, _retentionDays);
@@ -201,6 +225,7 @@ public sealed class TrafficStatsService : IHostedService, IDisposable
     public static string NormalizeSource(string? source)
     {
         var s = (source ?? "").Trim().ToLowerInvariant();
+        if (s is "store") return "store"; // acessos por loja (fora do resumo geral)
         return s is "pageview" or "page" or "site" ? "pageview" : "api";
     }
 

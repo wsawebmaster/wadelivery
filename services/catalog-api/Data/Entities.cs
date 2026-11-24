@@ -88,6 +88,21 @@ public class AdminUserEntity
 /// (financeiras/finalização) sem redigitar o PIN a cada ação. Em modo Json o
 /// armazenamento é em memória (IPinSessionStore); em PostgreSQL é a tabela pin_sessions.
 /// </summary>
+/// <summary>Histórico de ações da plataforma sobre as lojas (quem fez o quê e quando).</summary>
+public class PlatformAuditEntity
+{
+    public long Id { get; set; }
+    public DateTime At { get; set; } = DateTime.UtcNow;
+    /// <summary>Usuário que executou (ex.: "dev") ou "sistema" para rotinas automáticas.</summary>
+    public string Actor { get; set; } = "sistema";
+    /// <summary>Código da ação (ex.: payment.register, store.block, segment.change).</summary>
+    public string Action { get; set; } = string.Empty;
+    public Guid? PlatformStoreId { get; set; }
+    public int? StoreId { get; set; }
+    /// <summary>Detalhes em JSON (valores, resumo aplicado).</summary>
+    public string? Details { get; set; }
+}
+
 public class PinSessionEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -131,6 +146,12 @@ public class PlatformStoreEntity
     public bool BillingBlocked { get; set; }
     /// <summary>Desbloqueio manual de loja em atraso: o bloqueio automático aguarda até esta data.</summary>
     public DateTime? BillingBlockSuspendedUntil { get; set; }
+    /// <summary>SHA-256 (com sal) do IP de quem criou a loja: limite de cadastros por conexão.</summary>
+    public string? SignupIpHash { get; set; }
+    /// <summary>Loja de teste desativada por abandono (dono nunca acessou o painel).</summary>
+    public DateTime? AbandonedAt { get; set; }
+    /// <summary>Arquivos enviados da loja abandonada já foram apagados.</summary>
+    public DateTime? FilesPurgedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

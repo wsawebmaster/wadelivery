@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { resolvePublicTenant } from '@/lib/public-tenant'
 import { RESERVED_SLUGS } from '@/lib/tenant-hosts'
+import { browserApiBase, hostnameFromHostHeader } from '@/lib/api-base'
 import { escapeHtml, renderStorefrontPage, type SsrCategory, type SsrStore } from '@/lib/storefront-ssr'
 
 /**
@@ -17,8 +18,10 @@ function apiBase(): string {
   return (process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5100').replace(/\/$/, '')
 }
 
-function apiPublicBase(): string {
-  return (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://localhost:5100').replace(/\/$/, '')
+/** Base da API nas URLs do HTML (imagens, Open Graph); localhost vira o host da página (celular na rede). */
+function apiPublicBase(pageHost?: string | null): string {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://localhost:5100'
+  return browserApiBase(configured, hostnameFromHostHeader(pageHost))
 }
 
 function htmlResponse(body: string, status: number, cache = 'no-store') {
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const html = renderStorefrontPage(await indexRes.text(), {
     slug: tenantSlug,
     pageUrl: `${publicBase}/${tenantSlug}`,
-    apiPublicBase: apiPublicBase(),
+    apiPublicBase: apiPublicBase(request.headers.get('x-forwarded-host') || request.headers.get('host')),
     store: { ...(store || {}), storeName: store?.storeName || lookup.tenant.name, active: lookup.tenant.active },
     categories: catalog?.categories || [],
     segment: lookup.tenant.segment,

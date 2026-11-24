@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
+  logReminder,
   registerPlatformPayment,
   setPlatformStoreBlocked,
   updatePlatformBilling,
   type PlatformStore,
 } from '@/lib/admin-api'
+import { reminderMessage, whatsappUrl } from '@/lib/billing-reminder'
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 const DAY_MS = 86_400_000
@@ -36,26 +38,34 @@ function todayInput() {
   return local.toISOString().slice(0, 10)
 }
 
-function utcDay(value: string | Date) {
+export function utcDay(value: string | Date) {
   const d = new Date(value)
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+}
+
+/** Dias até a data (negativo = já passou), em dias UTC. */
+export function daysUntil(value?: string | null, now = new Date()): number | null {
+  if (!value) return null
+  const t = new Date(value)
+  if (Number.isNaN(t.getTime())) return null
+  return Math.round((utcDay(t) - utcDay(now)) / DAY_MS)
 }
 
 export type BillingTone = 'ok' | 'warn' | 'error' | 'muted'
 
 /** Resumo da cobrança para o card da loja. */
 export function billingSummary(store: PlatformStore): { label: string; tone: BillingTone } {
+  if (store.abandonedAt && !store.active) return { label: 'Desativada por abandono', tone: 'error' }
   if (store.billingBlocked) return { label: 'Bloqueada por atraso', tone: 'error' }
   if (!store.active) return { label: 'Bloqueada manualmente', tone: 'error' }
-  const today = utcDay(new Date())
   if (store.courtesy) {
     if (!store.courtesyUntil) return { label: 'Cortesia', tone: 'muted' }
-    const left = Math.round((utcDay(store.courtesyUntil) - today) / DAY_MS)
-    return { label: left > 0 ? `Teste grátis · ${left} dia(s)` : 'Teste grátis terminando', tone: 'muted' }
+    const left = daysUntil(store.courtesyUntil) ?? 0
+    return { label: left > 0 ? `Teste grátis · ${left} dia(s)` : 'Teste grátis terminando', tone: left <= 7 ? 'warn' : 'muted' }
   }
   if (!store.monthlyFee || Number(store.monthlyFee) <= 0) return { label: 'Sem mensalidade', tone: 'muted' }
   if (!store.nextDueAt) return { label: 'Sem vencimento definido', tone: 'warn' }
-  const diff = Math.round((utcDay(store.nextDueAt) - today) / DAY_MS)
+  const diff = daysUntil(store.nextDueAt) ?? 0
   if (diff < 0) return { label: `Vencida há ${-diff} dia(s)`, tone: 'error' }
   if (diff === 0) return { label: 'Vence hoje', tone: 'warn' }
   if (diff <= 5) return { label: `Vence em ${diff} dia(s)`, tone: 'warn' }
@@ -69,14 +79,35 @@ export function billingPillClass(tone: BillingTone) {
   return 'wa-pill'
 }
 
-interface Props {
-  store: PlatformStore
-  onClose: () => void
-  onChanged: (store: PlatformStore) => void
+/** Botão "Lembrar pelo WhatsApp": abre o wa.me com a mensagem e registra no histórico. */
+export function ReminderButton({ store, className = 'wa-btn wa-btn-ghost' }: { store: PlatformStore; className?: string }) {
+  const url = whatsappUrl(store.phone, reminderMessage(store))
+  return (
+    <a
+      href={url ?? undefined}
+      target="_blank"
+      rel="noreferrer"
+      aria-disabled={!url}
+      title={url ? 'Abre o WhatsApp com a mensagem pronta' : 'Loja sem telefone cadastrado'}
+      className={`${className} ${url ? '' : 'pointer-events-none opacity-50'}`}
+      onClick={() => {
+        if (url) void logReminder(store.id, billingSummary(store).label).catch(() => {})
+      }}
+    >
+      Lembrar pelo WhatsApp
+    </a>
+  )
 }
 
-export default function BillingDialog({ store, onClose, onChanged }: Props) {
-  const closeRef = useRef<HTMLButtonElement>(null)
+interface PanelProps {
+  store: PlatformStore
+  onChanged: (store: PlatformStore) => void
+  /** Mostra o botão de bloqueio (a página da loja tem a própria zona de risco). */
+  showBlock?: boolean
+}
+
+/** Conteúdo da cobrança: plano, pagamento, lembrete e histórico (diálogo e página da loja). */
+export function BillingPanel({ store, onChanged, showBlock = true }: PanelProps) {
   const [current, setCurrent] = useState(store)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -91,19 +122,6 @@ export default function BillingDialog({ store, onClose, onChanged }: Props) {
   const [payDate, setPayDate] = useState(todayInput())
   const [payAmount, setPayAmount] = useState(String(store.monthlyFee ?? 0))
   const [payNote, setPayNote] = useState('')
-
-  useEffect(() => {
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    closeRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      previous?.focus()
-    }
-  }, [onClose])
 
   function applyResult(updated: PlatformStore, text: string) {
     setCurrent(updated)
@@ -165,8 +183,130 @@ export default function BillingDialog({ store, onClose, onChanged }: Props) {
       applyResult(updated, block ? 'Loja bloqueada.' : 'Loja desbloqueada.')
     })
 
-  const summary = billingSummary(current)
   const payments = Array.isArray(current.payments) ? current.payments : []
+
+  return (
+    <div className="wa-form-section">
+      {error && <p className="wa-alert is-error">{error}</p>}
+      {message && <p className="wa-alert is-ok">{message}</p>}
+
+      <h3 className="text-sm font-semibold">Plano</h3>
+      <div className="grid gap-x-3 sm:grid-cols-2">
+        <label className="wa-field">
+          <span className="wa-label">Mensalidade (R$)</span>
+          <input className="wa-input" inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} />
+        </label>
+        <label className="wa-field">
+          <span className="wa-label">Próximo vencimento</span>
+          <input className="wa-input" type="date" value={nextDue} onChange={(e) => setNextDue(e.target.value)} />
+        </label>
+        <label className="wa-field flex items-center gap-2 sm:col-span-1">
+          <input type="checkbox" checked={courtesy} onChange={(e) => setCourtesy(e.target.checked)} />
+          <span className="text-sm">Cortesia / teste grátis</span>
+        </label>
+        <label className="wa-field">
+          <span className="wa-label">Cortesia até (vazio = sem prazo)</span>
+          <input
+            className="wa-input"
+            type="date"
+            value={courtesyUntil}
+            disabled={!courtesy}
+            onChange={(e) => setCourtesyUntil(e.target.value)}
+          />
+        </label>
+        <label className="wa-field sm:col-span-2">
+          <span className="wa-label">Observações</span>
+          <textarea className="wa-input" rows={2} maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </label>
+      </div>
+      <div className="wa-actions">
+        <button type="button" className="wa-btn wa-btn-primary" disabled={!!busy} onClick={() => void saveSettings()}>
+          {busy === 'save' ? 'Salvando…' : 'Salvar plano'}
+        </button>
+        <ReminderButton store={current} />
+        {showBlock && (
+          <button
+            type="button"
+            className={`wa-btn wa-btn-ghost ${current.active ? 'wa-btn-danger' : ''}`}
+            disabled={!!busy}
+            onClick={() => void toggleBlock()}
+          >
+            {busy === 'block' ? 'Aguarde…' : current.active ? 'Bloquear loja' : 'Desbloquear loja'}
+          </button>
+        )}
+      </div>
+
+      <h3 className="text-sm font-semibold">Registrar pagamento</h3>
+      <div className="grid gap-x-3 sm:grid-cols-3">
+        <label className="wa-field">
+          <span className="wa-label">Data</span>
+          <input className="wa-input" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+        </label>
+        <label className="wa-field">
+          <span className="wa-label">Valor (R$)</span>
+          <input className="wa-input" inputMode="decimal" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+        </label>
+        <label className="wa-field">
+          <span className="wa-label">Observação</span>
+          <input
+            className="wa-input"
+            placeholder="Pix, dinheiro, permuta…"
+            maxLength={200}
+            value={payNote}
+            onChange={(e) => setPayNote(e.target.value)}
+          />
+        </label>
+      </div>
+      <p className="wa-hint text-xs text-[var(--text-muted)]">
+        O pagamento quita o vencimento atual, avança o próximo em um mês e desbloqueia a loja se ela foi bloqueada por
+        atraso.
+      </p>
+      <button type="button" className="wa-btn wa-btn-primary" disabled={!!busy} onClick={() => void registerPayment()}>
+        {busy === 'pay' ? 'Registrando…' : 'Registrar pagamento'}
+      </button>
+
+      <h3 className="text-sm font-semibold">Pagamentos</h3>
+      {payments.length === 0 ? (
+        <p className="text-xs text-[var(--text-muted)]">Nenhum pagamento registrado.</p>
+      ) : (
+        <ul className="text-sm">
+          {payments.map((p, i) => (
+            <li key={`${p.paidAt}-${i}`} className="wa-row !justify-start">
+              <span className="w-24 shrink-0">{formatBillingDay(p.paidAt)}</span>
+              <span className="w-28 shrink-0 font-semibold">{currency.format(Number(p.amount || 0))}</span>
+              <span className="min-w-0 truncate text-[var(--text-muted)]">{p.note || '—'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+interface Props {
+  store: PlatformStore
+  onClose: () => void
+  onChanged: (store: PlatformStore) => void
+}
+
+export default function BillingDialog({ store, onClose, onChanged }: Props) {
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const [current, setCurrent] = useState(store)
+
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    closeRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      previous?.focus()
+    }
+  }, [onClose])
+
+  const summary = billingSummary(current)
 
   return (
     <div
@@ -181,7 +321,7 @@ export default function BillingDialog({ store, onClose, onChanged }: Props) {
         aria-labelledby="billing-title"
         className="wa-card wa-dialog max-h-[92vh] w-full max-w-2xl overflow-y-auto shadow-2xl"
       >
-        <header className="mb-4 flex items-start justify-between gap-4">
+        <header className="flex items-start justify-between gap-4">
           <div>
             <h2 id="billing-title" className="text-lg font-semibold">
               Cobrança · {current.name}
@@ -195,112 +335,13 @@ export default function BillingDialog({ store, onClose, onChanged }: Props) {
             Fechar
           </button>
         </header>
-
-        {error && <p className="wa-alert is-error mb-3">{error}</p>}
-        {message && <p className="wa-alert is-ok mb-3">{message}</p>}
-
-        <h3 className="mb-2 text-sm font-semibold">Plano</h3>
-        <div className="grid gap-x-3 sm:grid-cols-2">
-          <label className="wa-field">
-            <span className="wa-label">Mensalidade (R$)</span>
-            <input className="wa-input" inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} />
-          </label>
-          <label className="wa-field">
-            <span className="wa-label">Próximo vencimento</span>
-            <input className="wa-input" type="date" value={nextDue} onChange={(e) => setNextDue(e.target.value)} />
-          </label>
-          <label className="wa-field flex items-center gap-2 sm:col-span-1">
-            <input type="checkbox" checked={courtesy} onChange={(e) => setCourtesy(e.target.checked)} />
-            <span className="text-sm">Cortesia / teste grátis</span>
-          </label>
-          <label className="wa-field">
-            <span className="wa-label">Cortesia até (vazio = sem prazo)</span>
-            <input
-              className="wa-input"
-              type="date"
-              value={courtesyUntil}
-              disabled={!courtesy}
-              onChange={(e) => setCourtesyUntil(e.target.value)}
-            />
-          </label>
-          <label className="wa-field sm:col-span-2">
-            <span className="wa-label">Observações</span>
-            <textarea
-              className="wa-input"
-              rows={2}
-              maxLength={500}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </label>
-        </div>
-        <div className="wa-actions">
-          <button type="button" className="wa-btn wa-btn-primary" disabled={!!busy} onClick={() => void saveSettings()}>
-            {busy === 'save' ? 'Salvando…' : 'Salvar plano'}
-          </button>
-          <button
-            type="button"
-            className={`wa-btn wa-btn-ghost ${current.active ? 'wa-btn-danger' : ''}`}
-            disabled={!!busy}
-            onClick={() => void toggleBlock()}
-          >
-            {busy === 'block' ? 'Aguarde…' : current.active ? 'Bloquear loja' : 'Desbloquear loja'}
-          </button>
-        </div>
-
-        <h3 className="mb-2 text-sm font-semibold">Registrar pagamento</h3>
-        <div className="grid gap-x-3 sm:grid-cols-3">
-          <label className="wa-field">
-            <span className="wa-label">Data</span>
-            <input className="wa-input" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
-          </label>
-          <label className="wa-field">
-            <span className="wa-label">Valor (R$)</span>
-            <input
-              className="wa-input"
-              inputMode="decimal"
-              value={payAmount}
-              onChange={(e) => setPayAmount(e.target.value)}
-            />
-          </label>
-          <label className="wa-field">
-            <span className="wa-label">Observação</span>
-            <input
-              className="wa-input"
-              placeholder="Pix, dinheiro, permuta…"
-              maxLength={200}
-              value={payNote}
-              onChange={(e) => setPayNote(e.target.value)}
-            />
-          </label>
-        </div>
-        <p className="wa-hint text-xs text-[var(--text-muted)]">
-          O pagamento quita o vencimento atual, avança o próximo em um mês e desbloqueia a loja se ela foi bloqueada por
-          atraso.
-        </p>
-        <button
-          type="button"
-          className="wa-btn wa-btn-primary"
-          disabled={!!busy}
-          onClick={() => void registerPayment()}
-        >
-          {busy === 'pay' ? 'Registrando…' : 'Registrar pagamento'}
-        </button>
-
-        <h3 className="mb-2 text-sm font-semibold">Histórico</h3>
-        {payments.length === 0 ? (
-          <p className="text-xs text-[var(--text-muted)]">Nenhum pagamento registrado.</p>
-        ) : (
-          <ul className="text-sm">
-            {payments.map((p, i) => (
-              <li key={`${p.paidAt}-${i}`} className="wa-row !justify-start">
-                <span className="w-24 shrink-0">{formatBillingDay(p.paidAt)}</span>
-                <span className="w-28 shrink-0 font-semibold">{currency.format(Number(p.amount || 0))}</span>
-                <span className="min-w-0 truncate text-[var(--text-muted)]">{p.note || '—'}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <BillingPanel
+          store={store}
+          onChanged={(updated) => {
+            setCurrent(updated)
+            onChanged(updated)
+          }}
+        />
       </section>
     </div>
   )

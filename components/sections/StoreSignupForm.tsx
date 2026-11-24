@@ -3,7 +3,8 @@
 import { type ChangeEvent, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { RESERVED_SLUGS } from '@/lib/tenant-hosts'
-import { createStore, type CreatedStoreResponse } from '@/lib/store-provisioning'
+import { createStore, StoreSignupError, type CreatedStoreResponse } from '@/lib/store-provisioning'
+import { browserApiBase } from '@/lib/api-base'
 import { getApiBaseUrl } from '@/lib/admin-api'
 import styles from './StoreSignupForm.module.css'
 import { TURNSTILE_SITE_KEY, TurnstileWidget } from './TurnstileWidget'
@@ -258,6 +259,7 @@ export function StoreSignupForm() {
   const [files, setFiles] = useState<Partial<Record<ImageField, File>>>({})
   const [previews, setPreviews] = useState<Partial<Record<ImageField, string>>>({})
   const [error, setError] = useState('')
+  const [emailError, setEmailError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [created, setCreated] = useState<CreatedStoreResponse | null>(null)
   const [copied, setCopied] = useState(false)
@@ -453,7 +455,13 @@ export function StoreSignupForm() {
     try {
       setCreated(await createStore(formData))
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Não foi possível criar a loja.')
+      const message = reason instanceof Error ? reason.message : 'Não foi possível criar a loja.'
+      setError(message)
+      // E-mail recusado pela API (domínio inexistente/descartável): volta ao campo.
+      if (reason instanceof StoreSignupError && reason.field === 'Email') {
+        setEmailError(message)
+        setStep(1)
+      }
       // O token do CAPTCHA é de uso único: gera outro para a próxima tentativa.
       setCaptchaToken('')
       setCaptchaKey((current) => current + 1)
@@ -471,6 +479,11 @@ export function StoreSignupForm() {
   }
 
   if (created) {
+    // Links da API usam PUBLIC_APP_BASE_URL; em desenvolvimento (localhost) aberto pelo IP da rede,
+    // aponta para o mesmo host da página para funcionar no celular.
+    const pageHost = typeof window !== 'undefined' ? window.location.hostname : null
+    const publicUrl = browserApiBase(created.publicUrl, pageHost)
+    const adminUrl = browserApiBase(created.adminUrl, pageHost)
     return (
       <main className={styles.page}>
         <section className={`${styles.panel} ${styles.successPanel}`} aria-live="polite">
@@ -485,8 +498,8 @@ export function StoreSignupForm() {
           {created.deliveryWarning && (
             <p className={styles.warning} role="status">{created.deliveryWarning}</p>
           )}
-          <a className={styles.publicLink} href={created.publicUrl} target="_blank" rel="noreferrer">
-            {created.publicUrl}
+          <a className={styles.publicLink} href={publicUrl} target="_blank" rel="noreferrer">
+            {publicUrl}
           </a>
           <div className={styles.credentials}>
             <h2>Acesso inicial do painel</h2>
@@ -499,7 +512,7 @@ export function StoreSignupForm() {
               {copied ? 'Credenciais copiadas' : 'Copiar credenciais'}
             </button>
           </div>
-          <a className={styles.primaryButton} href={created.adminUrl}>
+          <a className={styles.primaryButton} href={adminUrl}>
             Acessar painel da loja
           </a>
         </section>
@@ -583,7 +596,8 @@ export function StoreSignupForm() {
                 <input value={fields.Telefone} onChange={(event) => updateField('Telefone', event.target.value)} type="tel" autoComplete="tel" />
               </label>
               <label>E-mail de acesso *
-                <input value={fields.Email} onChange={(event) => updateField('Email', event.target.value)} type="email" autoComplete="email" maxLength={64} />
+                <input value={fields.Email} onChange={(event) => { setEmailError(''); updateField('Email', event.target.value) }} type="email" autoComplete="email" maxLength={64} aria-invalid={emailError ? true : undefined} aria-describedby={emailError ? 'signup-email-error' : undefined} />
+                {emailError && <span id="signup-email-error" className={styles.fieldError} role="alert">{emailError}</span>}
               </label>
               <label>Segmento *
                 <select value={fields.Segmento} onChange={(event) => updateField('Segmento', event.target.value)}>

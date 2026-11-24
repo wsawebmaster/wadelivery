@@ -16,6 +16,10 @@ public static class DefaultLogo
     private static readonly HashSet<string> StopWords =
         new(["de", "da", "do", "das", "dos", "e", "a", "o", "the", "&"], StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Logo gerado pela plataforma (o lojista ainda não enviou o próprio).</summary>
+    public static bool IsDefault(string? logoUrl) =>
+        (logoUrl ?? "").Contains("/" + FilePrefix, StringComparison.OrdinalIgnoreCase);
+
     public static string Initials(string? name)
     {
         var words = (name ?? "")

@@ -103,7 +103,8 @@ public sealed class StoreProvisioningService(
 
     public async Task<CreateCompleteStoreResult> CreateAsync(
         CriarLojaRequest request,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? signupIpHash = null)
     {
         var db = services.GetService<CatalogDbContext>()
             ?? throw new InvalidOperationException("Persistência PostgreSQL não está configurada.");
@@ -211,23 +212,8 @@ public sealed class StoreProvisioningService(
                 .Select((title, i) => new CategoryEntity { Id = Guid.NewGuid().ToString("N"), StoreId = store.Id, Title = title, SortOrder = i + 1 })
                 .ToArray();
             db.Categories.AddRange(categories);
-            var sortOrder = 0;
-            foreach (var item in sample.Products)
-            {
-                db.Products.Add(new ProductEntity
-                {
-                    Id = Guid.NewGuid().ToString("N"),
-                    StoreId = store.Id,
-                    CategoryId = categories[Math.Clamp(item.CategoryIndex, 0, categories.Length - 1)].Id,
-                    Name = item.Name,
-                    Description = item.Description,
-                    Price = item.Price,
-                    ImageUrl = await SaveSamplePhotoAsync(item),
-                    Available = true,
-                    ShowInMenu = true,
-                    SortOrder = ++sortOrder
-                });
-            }
+            db.Products.AddRange(await SampleCatalog.CreateProductsAsync(
+                sample, categories, store.Id, slug, uploadsRoot, uploadedFiles, firstSortOrder: 1, ct));
             db.AdminUsers.Add(new AdminUserEntity
             {
                 StoreId = store.Id,
@@ -254,6 +240,7 @@ public sealed class StoreProvisioningService(
                 NextDueAt = trialUntil,
                 PaymentStatus = "courtesy",
                 PaymentsJson = "[]",
+                SignupIpHash = signupIpHash,
                 Active = true,
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -312,25 +299,6 @@ public sealed class StoreProvisioningService(
         {
             foreach (var file in uploadedFiles)
                 ImageStorage.TryDeleteUpload(file, uploadsRoot);
-        }
-
-        // Foto do produto de exemplo: falha (arquivo ausente/corrompido) não impede o cadastro.
-        async Task<string?> SaveSamplePhotoAsync(SampleProduct item)
-        {
-            var path = Path.Combine(SampleCatalog.AssetsDirectory, item.PhotoFile);
-            if (!File.Exists(path)) return null;
-            try
-            {
-                await using var stream = File.OpenRead(path);
-                var url = await ImageStorage.SaveProductPhotoAsync(
-                    stream, uploadsRoot, $"{SampleCatalog.PhotoPrefix}{slug}-{item.Name}", ct);
-                uploadedFiles.Add(url);
-                return url;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
         }
 
         async Task<string?> SaveImageAsync(IFormFile? file, string kind)
@@ -529,14 +497,17 @@ public sealed class StoreProvisioningService(
         return $"{request.Endereco.Trim()}, {request.Numero.Trim()}{neighborhood}, {request.Cidade.Trim()}/{request.Estado.Trim().ToUpperInvariant()}";
     }
 
-    private string ResolveUploadsRoot()
+    private string ResolveUploadsRoot() => ResolveUploadsRoot(configuration, environment.ContentRootPath);
+
+    /// <summary>Pasta de uploads (Data:UploadsRoot ou wwwroot/uploads), igual à servida em /uploads.</summary>
+    public static string ResolveUploadsRoot(IConfiguration configuration, string contentRootPath)
     {
         var configured = configuration["Data:UploadsRoot"];
         return string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(environment.ContentRootPath, "wwwroot", "uploads")
+            ? Path.Combine(contentRootPath, "wwwroot", "uploads")
             : Path.GetFullPath(Path.IsPathRooted(configured)
                 ? configured
-                : Path.Combine(environment.ContentRootPath, configured));
+                : Path.Combine(contentRootPath, configured));
     }
 
     private static string GenerateTemporaryPassword()

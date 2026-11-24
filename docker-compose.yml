@@ -41,6 +41,18 @@ services:
       Billing__TrialDays: ${BILLING_TRIAL_DAYS:-30}
       Billing__BlockAfterDays: ${BILLING_BLOCK_AFTER_DAYS:-5}
       Billing__DefaultMonthlyFee: ${BILLING_DEFAULT_MONTHLY_FEE:-0}
+      # IP real do visitante: confia no X-Forwarded-For do gateway (redes privadas do Docker).
+      ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
+      ForwardedHeaders__KnownNetworks__1: 10.0.0.0/8
+      # Cadastro de lojas: CAPTCHA obrigatório (sem chave configurada o cadastro fica indisponível)
+      Captcha__Enabled: ${CAPTCHA_ENABLED:-true}
+      Captcha__Provider: turnstile
+      Captcha__SiteKey: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
+      Captcha__SecretKey: ${TURNSTILE_SECRET_KEY:-}
+      Security__SignupIpSalt: ${SIGNUP_IP_SALT:-}
+      SignupQuota__PerIpPerDay: ${SIGNUP_PER_IP_PER_DAY:-2}
+      Signup__AbandonAfterDays: ${SIGNUP_ABANDON_AFTER_DAYS:-7}
+      Signup__PurgeFilesAfterDays: ${SIGNUP_PURGE_FILES_AFTER_DAYS:-30}
       Data__Root: /app/data
       Cors__Origins__0: http://localhost:8080
       Cors__Origins__1: http://127.0.0.1:8080

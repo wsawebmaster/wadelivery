@@ -43,7 +43,8 @@ public class StoreStatsService
             _logger.LogWarning(ex, "Falha ao ler último acesso da loja {StoreId}", storeId);
         }
 
-        var (menuViews30d, menuViewsTotal) = _traffic.GetPageviewCounts(30);
+        // Acessos ao cardápio desta loja (antes era o total da plataforma em todas as lojas).
+        var (menuViews30d, menuViewsTotal) = _traffic.GetStorePageviews(storeId, 30);
 
         long? orders30d = null;
         long? ordersTotal = null;
@@ -70,6 +71,33 @@ public class StoreStatsService
             Orders30d: orders30d,
             OrdersTotal: ordersTotal,
             OrdersAvailable: ordersAvailable);
+    }
+
+    /// <summary>Pedidos de todas as lojas numa consulta: StoreId → (30 dias, total, último pedido).</summary>
+    public async Task<Dictionary<int, (long Last30d, long Total, DateTime? LastOrderAt)>> CountOrdersByStoreAsync(CancellationToken ct)
+    {
+        var result = new Dictionary<int, (long, long, DateTime?)>();
+        if (!IsAvailable) return result;
+        try
+        {
+            await using var conn = new NpgsqlConnection(_conn);
+            await conn.OpenAsync(ct);
+            await using var tx = await conn.BeginTransactionAsync(ct);
+            await using (var setup = new NpgsqlCommand("SET LOCAL row_security = off", conn, tx))
+                await setup.ExecuteNonQueryAsync(ct);
+            await using var cmd = new NpgsqlCommand(
+                """SELECT "StoreId", COUNT(*) FILTER (WHERE "CreatedAtUtc" >= @from30), COUNT(*), MAX("CreatedAtUtc") FROM orders GROUP BY "StoreId" """,
+                conn, tx);
+            cmd.Parameters.AddWithValue("from30", DateTime.UtcNow.AddDays(-30));
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct))
+                result[r.GetInt32(0)] = (r.GetInt64(1), r.GetInt64(2), r.IsDBNull(3) ? null : DateTime.SpecifyKind(r.GetDateTime(3), DateTimeKind.Utc));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao contar pedidos por loja (tabela orders ausente?)");
+        }
+        return result;
     }
 
     private async Task<(long? Last30d, long? Total)> CountOrdersAsync(int storeId, CancellationToken ct)

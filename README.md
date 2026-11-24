@@ -10,8 +10,8 @@ WaDelivery reúne a landing page Next.js, a loja operacional Fabin, o painel adm
 - **Cardápio das lojas:** `/{slug}` (inclusive `/fabin`) entrega o storefront operacional direto na página, renderizado no servidor com SEO, dados estruturados e produtos no HTML (indexável), e o app assume carrinho, checkout, mesa e acompanhamento. A implementação fica em `apps/storefront` e é publicada em `public/storefront` antes de `dev` e `build`. Lojas da plataforma usam rolagem vertical por categorias; a Fabin mantém o layout original.
 - **Acesso do lojista:** a senha temporária do cadastro (ou redefinida pela plataforma) exige troca no primeiro acesso; o lojista também troca a senha pelo menu da conta. "Esqueci minha senha" orienta a pedir a redefinição à plataforma (não há envio de e-mail). O painel mostra o aviso da mensalidade (vencimento próximo, vencida com data de bloqueio ou loja bloqueada) e o checklist "Complete sua loja" (logo próprio, Pix, mapa, entrega, horário, produtos próprios e fotos; o logo padrão e os produtos de exemplo não contam).
 - **Lojas por slug:** `/{slug}` consulta `GET /api/lojas/slug/{slug}`; lojas existentes carregam o storefront com as configurações visuais salvas. Slugs inválidos/inexistentes retornam 404 e indisponibilidade da API apresenta opção para tentar novamente.
-- **Painel da plataforma:** `/login`, `/admin` e `/admin/lojas`, com acesso de perfil `Dev`. `/admin/login` redireciona para `/login`.
-- **Painel operacional completo:** `/admin/legado` incorpora o painel existente de `apps/admin` e compartilha a sessão do mesmo domínio.
+- **Painel da plataforma:** `/login`, `/admin` e `/admin/lojas`, com acesso de perfil `Dev`. `/admin/login` redireciona para `/login`. O dashboard mostra receita recorrente, cadastros, ações do dia (vencidas, testes terminando, bloqueadas, prestes a expirar por abandono), funil de ativação dos lojistas e pedidos por loja. Cada loja tem uma página (`/admin/lojas/{id}`) com dados cadastrais, cobrança, segmento, usuários (redefinição de senha com senha temporária gerada), logo, histórico de ações e zona de risco. Toda alteração da plataforma e das rotinas automáticas fica registrada no histórico. O lembrete de cobrança abre o WhatsApp do lojista com a mensagem pronta (link `wa.me`; sem envio automático).
+- **Painel operacional antigo:** `/admin/legado` incorpora o painel existente de `apps/admin` e compartilha a sessão do mesmo domínio. Fica fora do menu (acesso pela URL); hoje só ele oferece o explorador do banco, duplicar loja e galeria.
 - **APIs:** `services/catalog-api`, `services/orders-api` e gateway YARP em `services/gateway`.
 - **Dados iniciais:** `data/products.json`, `data/ingredients.json`, `data/store-config.json` e `data/platform-stores.json`. O backend pode usar JSON local ou PostgreSQL.
 
@@ -69,6 +69,13 @@ Pré-requisitos: Node.js/npm, .NET 10 SDK e, para o ambiente completo, Docker co
 
 Para executar apenas o Next.js, use `npm run dev` (porta 3000); as APIs precisam estar disponíveis separadamente. `npm run dev:up:light` inicia catalog-api em JSON, gateway e frontends sem Docker, mas **não inicia orders-api**; portanto, não substitui o ambiente completo para validar o fluxo de pedidos.
 
+### Testar no celular (rede local)
+
+1. Com o ambiente no ar (`npm run dev:up`), rode **uma vez, como administrador**: `.\scripts\lan-expose.ps1`. Ele encaminha a porta 5100 (API) do IP da rede para o Docker no WSL (`netsh portproxy`) e cria uma regra de firewall só para redes **Privadas**. Para desfazer: `.\scripts\lan-expose.ps1 -Remove`.
+2. No celular, na mesma rede Wi-Fi, abra `http://<IP-do-PC>:3000` (o script mostra o endereço).
+
+O front troca `localhost` da API pelo host da página (`lib/api-base.ts`), então o `.env` continua com `http://localhost:5100`. Se o IP do PC mudar (DHCP), rode o script de novo. Pelo encaminhamento, todos os aparelhos da rede chegam à API com o mesmo IP e dividem o limite de cadastros por conexão (`SIGNUP_PER_IP_PER_DAY`).
+
 ### Build e testes
 
 ```bash
@@ -102,5 +109,13 @@ Configure também PublicApp__BaseUrl=https://wadelivery.com.br no catalog-api e 
 
 O cadastro possui dois modos: **teste rápido** (Nome, E-mail, WhatsApp, Segmento, UF e Cidade; slug auto-gerado) e **configuração completa** (PF/PJ com CPF ou CNPJ alfanumérico para PJ, endereço completo, visual e imagens). No teste rápido, a loja é criada com IsTeste=true, AcceptingOrders=false, sem mesas/módulos de atendimento ativados e com visual padrão; o usuário completa os dados no painel antes de ativar pedidos. A senha temporária é exibida apenas na resposta de criação.
 
-Controles anti-abuso do cadastro: rate limit por IP (store-signup), validação opcional de CAPTCHA no backend (Captcha:Enabled, Captcha:Provider, Captcha:SiteKey, Captcha:SecretKey), quotas globais (SignupQuota:PerHour, PerDay, MaxActiveTestStores) e limite de uma conta por e-mail. O formulário `/criar-loja` exibe o widget do Cloudflare Turnstile quando `NEXT_PUBLIC_TURNSTILE_SITE_KEY` está definida; habilite `Captcha:Enabled` no backend apenas junto com essa variável (o front suporta somente o provedor `turnstile`). O limite `MaxActiveTestStores` conta lojas de teste ativas: desativar uma loja de teste em `/admin/lojas` libera vaga. Em produção atrás de proxy/CDN, configure ForwardedHeaders:KnownProxies/KnownNetworks para que o rate limit por IP use o endereço real.
+Controles anti-abuso do cadastro (`POST /api/lojas/criar-completa`):
+
+- **CAPTCHA obrigatório** (Cloudflare Turnstile): sem `Captcha:Enabled` + `Captcha:SecretKey` o cadastro responde 503 "temporariamente indisponível"; só `Captcha:AllowDisabled=true` (apenas em `appsettings.Development.json`) dispensa. No Compose, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`; o `.env.example` traz as chaves de **teste** da Cloudflare (sempre aprovam) — em produção use as chaves reais.
+- **E-mail com domínio real**: recusa domínios reservados (`example.com`, `.test`…) e descartáveis (mailinator, yopmail…) e consulta o MX do domínio por DNS-over-HTTPS (Cloudflare). Falha de DNS não bloqueia o cadastro. Isso não prova que a pessoa é dona do endereço: não há confirmação por link (sem provedor de e-mail).
+- **Limite por conexão**: até `SIGNUP_PER_IP_PER_DAY` (2) lojas por IP a cada 24h, guardando só o hash do IP com sal (`SIGNUP_IP_SALT`, padrão a chave JWT). O catalog-api confia no `X-Forwarded-For` do gateway (`ForwardedHeaders:KnownNetworks`, redes privadas do Docker no Compose); em produção atrás de CDN/proxy, configure o gateway para confiar no proxy de borda, senão todos os visitantes contam como o mesmo IP.
+- **Cotas globais** (`SignupQuota:PerHour`, `PerDay`, `MaxActiveTestStores`) contadas em `platform_stores`, rate limit por IP (`store-signup`) e uma conta por e-mail.
+- **Lojas abandonadas**: loja de teste cujo dono nunca entrou no painel é desativada após `SIGNUP_ABANDON_AFTER_DAYS` (7) dias e tem os arquivos enviados apagados `SIGNUP_PURGE_FILES_AFTER_DAYS` (30) dias depois (os registros ficam). Reativar: `/admin/lojas` → Cobrança → Desbloquear loja. Execução manual: `POST /api/v1/admin/platform-stores/cleanup/run`.
+
+Em produção atrás de proxy/CDN, configure também ForwardedHeaders:KnownProxies/KnownNetworks para que os limites por IP usem o endereço real.
 Consulte [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md), [docs/architecture.md](docs/architecture.md) e [README-DEPLOY.md](README-DEPLOY.md) para detalhes operacionais. Não faça commits ou crie branches durante tarefas de manutenção sem solicitação explícita.

@@ -12,6 +12,7 @@ public class CatalogDbContext(DbContextOptions<CatalogDbContext> options) : DbCo
     public DbSet<ProductIngredientEntity> ProductIngredients => Set<ProductIngredientEntity>();
     public DbSet<AdminUserEntity> AdminUsers => Set<AdminUserEntity>();
     public DbSet<PinSessionEntity> PinSessions => Set<PinSessionEntity>();
+    public DbSet<PlatformAuditEntity> PlatformAudit => Set<PlatformAuditEntity>();
     public DbSet<PlatformStoreEntity> PlatformStores => Set<PlatformStoreEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -130,6 +131,17 @@ public class CatalogDbContext(DbContextOptions<CatalogDbContext> options) : DbCo
             e.Property(x => x.DisplayName).HasMaxLength(120);
             e.Property(x => x.PinHash).HasMaxLength(200);
             e.HasIndex(x => x.StoreId);
+        });
+
+        modelBuilder.Entity<PlatformAuditEntity>(e =>
+        {
+            e.ToTable("platform_audit");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityByDefaultColumn();
+            e.Property(x => x.Actor).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Action).HasMaxLength(60).IsRequired();
+            e.HasIndex(x => new { x.PlatformStoreId, x.At });
+            e.HasIndex(x => x.At);
         });
 
         modelBuilder.Entity<PinSessionEntity>(e =>

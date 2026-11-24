@@ -25,7 +25,7 @@ public static class CorsLan
             && !string.Equals(uri.Scheme, "https", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        if (uri.Port is not (80 or 443 or 5500 or 8080 or 8081))
+        if (uri.Port is not (80 or 443 or 3000 or 5500 or 8080 or 8081))
             return false;
 
         return IsLanHost(uri.Host);

@@ -12,10 +12,10 @@ import {
 } from '@/lib/admin-session'
 import { setUnauthorizedHandler } from '@/lib/admin-api'
 
+// /admin/legado (painel operacional antigo) continua acessível pela URL, fora do menu.
 const NAV = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
   { href: '/admin/lojas', label: 'Lojas', icon: '🏪' },
-  { href: '/admin/legado', label: 'Painel completo', icon: '🧩' },
 ]
 
 interface AdminShellProps {

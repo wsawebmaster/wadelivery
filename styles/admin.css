@@ -321,6 +321,676 @@
   }
 }
 
+/* Seções de formulário reaproveitadas no diálogo e na página da loja */
+.wa-form-section h3 {
+  margin: 22px 0 12px;
+}
+.wa-form-section > h3:first-child,
+.wa-form-section > .wa-alert + h3 {
+  margin-top: 4px;
+}
+.wa-form-section .wa-alert {
+  margin-bottom: 12px;
+}
+.wa-form-section .wa-hint {
+  margin: 4px 0 14px;
+}
+.wa-form-section .wa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Dashboard de negócio ---------- */
+.wa-btn-sm {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.wa-actions-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wa-actions-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.wa-actions-list li:last-child {
+  border-bottom: none;
+}
+.wa-actions-list li.is-error {
+  color: var(--error);
+}
+.wa-actions-list .wa-pill {
+  margin-left: 6px;
+}
+.wa-funnel {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wa-funnel-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.wa-funnel-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.wa-funnel-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand), var(--brand-light));
+}
+.wa-ranking {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wa-rank {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+@media (min-width: 1024px) {
+  .wa-span-2 {
+    grid-column: span 2;
+  }
+}
+
+/* ---------- Lista de lojas (tabela) ---------- */
+.wa-stores {
+  overflow: visible;
+}
+.wa-stores-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+}
+.wa-search {
+  display: flex;
+  flex: 1 1 280px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-faint);
+  transition: border-color 0.15s;
+}
+.wa-search:focus-within {
+  border-color: var(--brand-light);
+}
+.wa-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+.wa-select {
+  width: auto;
+  min-width: 180px;
+}
+.wa-only-mobile {
+  display: none;
+}
+.wa-stores-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.wa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.wa-chip:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.wa-chip.is-active {
+  color: var(--text);
+  border-color: var(--brand-light);
+  background: var(--surface);
+}
+.wa-chip-count {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.wa-chip.is-active .wa-chip-count {
+  background: var(--brand);
+  color: #fff;
+}
+.wa-hidden-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.wa-stores-msg {
+  margin: 12px 16px 0;
+}
+.wa-stores-empty {
+  padding: 56px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+/* Sem rolagem horizontal no desktop: o menu "⋯" não pode ser cortado. */
+.wa-table-wrap {
+  overflow: visible;
+}
+.wa-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.wa-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 11px 14px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.wa-table th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.wa-table th button:hover {
+  color: var(--text);
+}
+.wa-sort {
+  font-size: 9px;
+  opacity: 0.45;
+}
+.wa-table th[aria-sort] {
+  color: var(--text);
+}
+.wa-table th[aria-sort] .wa-sort {
+  opacity: 1;
+  color: var(--brand-light);
+}
+.wa-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  transition: background 0.12s;
+}
+.wa-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.wa-stores-table tbody tr {
+  cursor: pointer;
+}
+.wa-stores-table tbody tr:hover td {
+  background: var(--surface);
+}
+.wa-table tr.is-hidden td {
+  opacity: 0.55;
+}
+.wa-table .is-num {
+  text-align: right;
+}
+.wa-table th.is-num button {
+  flex-direction: row-reverse;
+}
+.wa-cell-store {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 240px;
+}
+.wa-avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.wa-avatar.is-initials {
+  display: grid;
+  place-items: center;
+  border: 0;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.wa-store-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.wa-store-name:hover {
+  text-decoration: underline;
+}
+.wa-store-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.wa-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.wa-cell-sub {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.wa-muted-strong {
+  color: var(--accent);
+}
+.wa-orders {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.wa-orders-bar {
+  width: 64px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+.wa-orders-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand), var(--brand-light));
+}
+.wa-cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+.wa-cell-actions > * {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.wa-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  transition: color 0.15s, border-color 0.15s;
+}
+.wa-icon-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.wa-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.wa-menu {
+  position: relative;
+}
+.wa-menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  display: grid;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  text-align: left;
+}
+.wa-menu-list.is-up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+.wa-menu-list > button,
+.wa-menu-list > a {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text);
+}
+.wa-menu-list > button:hover,
+.wa-menu-list > a:hover {
+  background: var(--surface-hover);
+}
+.wa-menu-list > button:disabled,
+.wa-menu-list > a.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.wa-stores-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.wa-stores-footer strong {
+  color: var(--text);
+}
+.wa-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.wa-pager label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.wa-pager select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Celular/tablet: cada loja vira um cartão empilhado */
+@media (max-width: 900px) {
+  .wa-only-mobile {
+    display: block;
+  }
+  .wa-select {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+  .wa-hidden-toggle {
+    margin-left: 0;
+  }
+  .wa-stores-table thead {
+    display: none;
+  }
+  .wa-stores-table,
+  .wa-stores-table tbody,
+  .wa-stores-table tr,
+  .wa-stores-table td {
+    display: block;
+  }
+  .wa-stores-table tbody tr {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .wa-stores-table tbody tr:last-child {
+    border-bottom: none;
+  }
+  .wa-stores-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0;
+    border: 0;
+    text-align: right;
+  }
+  .wa-stores-table td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: left;
+  }
+  .wa-stores-table td.wa-cell-store {
+    justify-content: flex-start;
+    min-width: 0;
+    margin-bottom: 6px;
+    text-align: left;
+  }
+  .wa-stores-table td.wa-cell-store::before {
+    display: none;
+  }
+  .wa-stores-table td {
+    flex-wrap: wrap;
+  }
+  .wa-stores-table td .wa-pill {
+    white-space: nowrap;
+  }
+  .wa-cell-sub {
+    flex-basis: 100%;
+    margin: 0;
+    text-align: right;
+  }
+  .wa-stores-table td.wa-cell-actions {
+    justify-content: flex-end;
+    padding-top: 10px;
+  }
+  .wa-stores-table tbody tr:hover td {
+    background: transparent;
+  }
+}
+
+/* ---------- Página da loja (plataforma) ---------- */
+.wa-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.wa-detail-logo {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  object-fit: cover;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.wa-detail-logo.is-empty {
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+}
+.wa-detail-logo.is-large {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+}
+.wa-detail-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.wa-detail-nav a {
+  color: var(--text-muted);
+}
+.wa-detail-nav a:hover {
+  color: var(--text);
+}
+.wa-detail-grid {
+  display: grid;
+  gap: 14px;
+}
+.wa-detail-section {
+  padding: 20px;
+  scroll-margin-top: 16px;
+}
+.wa-detail-section .wa-dl dt {
+  color: var(--text-muted);
+}
+@media (min-width: 1100px) {
+  .wa-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Resumo e Segmento lado a lado; seções largas ocupam a linha inteira */
+    grid-auto-flow: dense;
+  }
+  #logo,
+  #dados,
+  #cobranca,
+  #usuarios,
+  #historico,
+  #risco {
+    grid-column: span 2;
+  }
+}
+.wa-credentials {
+  display: grid;
+  gap: 6px;
+}
+.wa-credentials code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+  user-select: all;
+}
+.wa-timeline {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wa-timeline li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 9px 0 9px 14px;
+  border-left: 2px solid var(--brand-light);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.wa-timeline li.is-system {
+  border-left-color: var(--border-strong);
+}
+.wa-timeline-meta {
+  color: var(--text-faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ---------- Escolha de segmento ---------- */
+.wa-segment-list {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 16px;
+  border: 0;
+}
+.wa-segment-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.wa-segment-option.is-selected {
+  border-color: var(--brand-light);
+  background: var(--surface);
+}
+.wa-segment-name {
+  flex: 1;
+  font-size: 14px;
+}
+.wa-segment-swatches {
+  display: inline-flex;
+  gap: 4px;
+}
+.wa-segment-swatches i {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.wa-summary {
+  display: grid;
+  gap: 6px;
+  padding-left: 28px;
+  list-style: disc;
+}
 /* ---------- Gráfico de barras ---------- */
 .wa-chart {
   display: flex;
@@ -727,4 +1397,29 @@
   .wa-login-brand {
     display: flex;
   }
+}
+
+/* ---------- Espaçamentos utilitários do painel ----------
+   O reset global (* { margin: 0; padding: 0 } em app/globals.css, fora de @layer) anula os
+   utilitários de margem/padding do Tailwind. Dentro do painel (.wa-app) eles voltam a valer. */
+.wa-app .mt-1 { margin-top: 0.25rem; }
+.wa-app .mt-4 { margin-top: 1rem; }
+.wa-app .mb-2 { margin-bottom: 0.5rem; }
+.wa-app .mb-3 { margin-bottom: 0.75rem; }
+.wa-app .mb-4 { margin-bottom: 1rem; }
+.wa-app .mb-5 { margin-bottom: 1.25rem; }
+.wa-app .mb-8 { margin-bottom: 2rem; }
+.wa-app .ml-2 { margin-left: 0.5rem; }
+.wa-app .ml-auto { margin-left: auto; }
+.wa-app .p-1 { padding: 0.25rem; }
+.wa-app .p-2 { padding: 0.5rem; }
+.wa-app .p-3 { padding: 0.75rem; }
+.wa-app .p-4 { padding: 1rem; }
+.wa-app .p-6 { padding: 1.5rem; }
+.wa-app .pl-5 { padding-left: 1.25rem; }
+.wa-app .space-y-1 > * + * { margin-top: 0.25rem; }
+.wa-app .space-y-2 > * + * { margin-top: 0.5rem; }
+.wa-app .space-y-3 > * + * { margin-top: 0.75rem; }
+@media (min-width: 640px) {
+  .wa-app .sm\:p-6 { padding: 1.5rem; }
 }

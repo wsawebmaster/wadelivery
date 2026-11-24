@@ -489,7 +489,8 @@ public static partial class CatalogInputValidation
         if (!string.IsNullOrWhiteSpace(body.Plan))
         {
             var plan = body.Plan.Trim().ToLowerInvariant();
-            if (plan is not ("basic" or "premium" or "trial" or "starter")) return "Plano inválido (basic, premium, trial ou starter).";
+            // "teste" = loja criada pelo cadastro automático (StoreProvisioningService).
+            if (plan is not ("basic" or "premium" or "trial" or "starter" or "teste")) return "Plano inválido (basic, premium, trial, starter ou teste).";
         }
         if (body.Segment is not null && body.Segment.Trim().Length > 50)
             return "Segmento deve ter no máximo 50 caracteres.";
