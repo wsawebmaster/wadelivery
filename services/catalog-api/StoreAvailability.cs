@@ -15,11 +15,14 @@ public static class StoreAvailability
     {
         if (platform.Count == 0) return true;
 
+        // A loja do tenant tem prioridade. Com várias lojas no mesmo domínio (/{slug}), o host
+        // da origem é igual para todas e casaria com a primeira — bloqueando a loja errada.
         PlatformStoreDto? match = storeId is null
             ? null
             : platform.FirstOrDefault(p => p.StoreId == storeId);
 
-        if (!string.IsNullOrWhiteSpace(originOrReferer)
+        if (match is null
+            && !string.IsNullOrWhiteSpace(originOrReferer)
             && Uri.TryCreate(originOrReferer, UriKind.Absolute, out var originUri))
         {
             match = platform.FirstOrDefault(p =>

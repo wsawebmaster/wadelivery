@@ -8,6 +8,10 @@ export interface CreatedStoreResponse {
   adminUsername: string
   temporaryPassword: string
   createdAt: string
+  /** false quando a loja não foi localizada no mapa (entrega desativada). */
+  acceptingOrders?: boolean
+  /** Aviso a exibir na confirmação (ex.: endereço não localizado). */
+  deliveryWarning?: string | null
 }
 
 function isCreatedStoreResponse(value: unknown): value is CreatedStoreResponse {
@@ -41,8 +45,16 @@ export async function createStore(formData: FormData): Promise<CreatedStoreRespo
       const body: unknown = await response.json()
       if (typeof body === 'object' && body !== null) {
         const errorBody = body as Record<string, unknown>
-        if (typeof errorBody.error === 'string') message = errorBody.error
-        else if (typeof errorBody.title === 'string') message = errorBody.title
+        if (typeof errorBody.error === 'string') {
+          message = errorBody.error
+        } else if (typeof errorBody.errors === 'object' && errorBody.errors !== null) {
+          const details = Object.values(errorBody.errors as Record<string, unknown>)
+            .flatMap((v) => Array.isArray(v) ? v : [v])
+            .filter((v): v is string => typeof v === 'string')
+          message = details.length > 0 ? details.join(' ') : (typeof errorBody.title === 'string' ? errorBody.title : message)
+        } else if (typeof errorBody.title === 'string') {
+          message = errorBody.title
+        }
       }
     } catch {
       // Algumas respostas de proxy podem não ter corpo JSON.

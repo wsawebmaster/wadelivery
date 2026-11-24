@@ -179,6 +179,7 @@ public class RemoteStoreToolsService
     private sealed class SnapIngredient
     {
         public string Id = ""; public string Name = ""; public int SortOrder; public string? CategoryId;
+        public bool Available = true;
     }
 
     private sealed class SnapStore
@@ -221,7 +222,7 @@ public class RemoteStoreToolsService
             }
 
             await using (var cmd = new NpgsqlCommand(
-                """SELECT "Id", "Name", "SortOrder", "CategoryId" FROM ingredients WHERE "StoreId" = @store ORDER BY "SortOrder", "Id" """, conn, tx))
+                """SELECT "Id", "Name", "SortOrder", "CategoryId", "Available" FROM ingredients WHERE "StoreId" = @store ORDER BY "SortOrder", "Id" """, conn, tx))
             {
                 cmd.Parameters.AddWithValue("store", storeId);
                 await using var r = await cmd.ExecuteReaderAsync(token);
@@ -231,7 +232,8 @@ public class RemoteStoreToolsService
                         Id = r.GetString(0),
                         Name = r.GetString(1),
                         SortOrder = r.GetInt32(2),
-                        CategoryId = r.IsDBNull(3) ? null : r.GetString(3)
+                        CategoryId = r.IsDBNull(3) ? null : r.GetString(3),
+                        Available = r.IsDBNull(4) || r.GetBoolean(4)
                     });
             }
 
@@ -444,7 +446,8 @@ public class RemoteStoreToolsService
                                     {
                                         Id = id,
                                         Name = ingredientName,
-                                        CategoryId = NullStr(ing, "categoryId")
+                                        CategoryId = NullStr(ing, "categoryId"),
+                                        Available = Bool(ing, "available")
                                     };
                                 }
                                 if (Bool(ing, "isPrincipal"))
@@ -476,7 +479,8 @@ public class RemoteStoreToolsService
                             Id = id,
                             Name = name,
                             SortOrder = Int(ing, "sortOrder"),
-                            CategoryId = NullStr(ing, "categoryId")
+                            CategoryId = NullStr(ing, "categoryId"),
+                            Available = Bool(ing, "available")
                         };
                     }
                 }
@@ -1561,18 +1565,20 @@ public class RemoteStoreToolsService
             {
                 await using var cmd = new NpgsqlCommand(
                     """
-                    INSERT INTO ingredients ("Id", "StoreId", "Name", "SortOrder", "CategoryId")
-                    VALUES (@id, @store, @name, @sort, @cat)
+                    INSERT INTO ingredients ("Id", "StoreId", "Name", "SortOrder", "CategoryId", "Available")
+                    VALUES (@id, @store, @name, @sort, @cat, @available)
                     ON CONFLICT ("Id") DO UPDATE SET
                         "Name" = EXCLUDED."Name",
                         "SortOrder" = EXCLUDED."SortOrder",
-                        "CategoryId" = EXCLUDED."CategoryId"
+                        "CategoryId" = EXCLUDED."CategoryId",
+                        "Available" = EXCLUDED."Available"
                     """, conn, tx);
                 cmd.Parameters.AddWithValue("id", i.Id);
                 cmd.Parameters.AddWithValue("store", storeId);
                 cmd.Parameters.AddWithValue("name", i.Name);
                 cmd.Parameters.AddWithValue("sort", i.SortOrder);
                 cmd.Parameters.AddWithValue("cat", (object?)i.CategoryId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("available", i.Available);
                 await cmd.ExecuteNonQueryAsync(token);
                 counts.IngredientsSynced++;
             }

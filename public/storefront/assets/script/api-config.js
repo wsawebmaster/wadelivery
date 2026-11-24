@@ -8,7 +8,11 @@
  * 5) hosts públicos (Vercel etc.) sem inject → erro explícito
  */
 (function () {
-  var tenantSlug = new URLSearchParams(window.location.search).get('tenant') || 'fabin';
+  // Loja: injetada pelo servidor em /{slug} (window.WA_TENANT_SLUG) ou ?tenant= no
+  // /storefront/index.html (prévia do painel, QR de mesa); sem nenhum dos dois, Fabin.
+  var tenantSlug = window.WA_TENANT_SLUG
+    || new URLSearchParams(window.location.search).get('tenant')
+    || 'fabin';
   if (tenantSlug) {
     window.WA_TENANT_SLUG = tenantSlug;
     var nativeFetch = window.fetch.bind(window);

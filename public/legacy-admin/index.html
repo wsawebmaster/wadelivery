@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin — Fabin Lanches</title>
-  <link rel="stylesheet" href="styles.css?v=129" />
+  <title>Painel da loja — WaDelivery</title>
+  <link rel="stylesheet" href="styles.css?v=130" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%94%3C/text%3E%3C/svg%3E" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=3" />
 </head>
@@ -18,6 +18,11 @@
     <input id="password" type="password" value="" autocomplete="current-password" placeholder="Senha" />
     <button id="loginBtn" type="button">Entrar</button>
     <p id="loginError" class="error" hidden></p>
+    <button type="button" id="forgotPasswordBtn" class="link-btn">Esqueci minha senha</button>
+    <p id="forgotPasswordHelp" class="muted forgot-help" hidden>
+      Para redefinir sua senha, fale com o suporte da plataforma WaDelivery. Você receberá uma senha temporária
+      e definirá a sua no primeiro acesso.
+    </p>
   </div>
 
   <div id="appView" hidden>
@@ -53,6 +58,7 @@
             <small id="dropdownUsername" class="muted"></small>
           </div>
           <button type="button" data-user-action="store" data-admin-only hidden><span aria-hidden="true">🏪</span> Configurações da loja</button>
+          <button type="button" data-user-action="password"><span aria-hidden="true">🔑</span> Alterar senha</button>
           <button type="button" data-user-action="logout"><span aria-hidden="true">🚪</span> Sair</button>
           <hr />
           <div id="profileSwitcher" class="user-dropdown-profile" hidden>
@@ -87,6 +93,8 @@
       <button id="logoutBtn" type="button" class="ghost">Sair</button>
     </aside>
     <main>
+      <section id="billingBanner" class="billing-banner" hidden role="status"></section>
+      <section id="onboardingChecklist" class="onboarding-card" hidden aria-label="Complete sua loja"></section>
       <section id="tab-dashboard" class="tab" hidden>
         <div class="orders-header">
           <div>
@@ -230,8 +238,10 @@
         <h3>Configuração da loja</h3>
         <div class="store-tabbar" role="tablist" aria-label="Configuração da loja">
           <button type="button" class="store-tabbtn" data-store-tab="geral" role="tab" aria-selected="true">Geral</button>
+          <button type="button" class="store-tabbtn" data-store-tab="aparencia" role="tab" aria-selected="false">Aparência</button>
           <button type="button" class="store-tabbtn" data-store-tab="funcionamento" role="tab" aria-selected="false">Funcionamento</button>
           <button type="button" class="store-tabbtn" data-store-tab="endereco" role="tab" aria-selected="false">Endereço &amp; Entrega</button>
+          <button type="button" class="store-tabbtn" data-store-tab="whatsapp" role="tab" aria-selected="false">Mensagem WhatsApp</button>
           <button type="button" class="store-tabbtn" data-store-tab="impressao" role="tab" aria-selected="false">Configurações de Impressão</button>
           <button type="button" class="store-tabbtn" data-store-tab="painel" role="tab" aria-selected="false">Painel</button>
         </div>
@@ -245,6 +255,7 @@
           <input id="pixKey" type="text" />
           <label>Label Pix</label>
           <input id="pixKeyLabel" type="text" />
+          <p id="pixKeyLabelHint" class="muted">Preenchido automaticamente pelo tipo da chave (CPF, CNPJ, E-mail, Celular ou Chave aleatória). Você pode alterar.</p>
           <label>Logo URL</label>
           <input id="logoUrl" type="text" />
           <label>Upload logo</label>
@@ -341,7 +352,7 @@
           </div>
           <p id="geocodeStoreStatus" class="muted"></p>
 
-          <h4 class="store-section-title">Entrega por km</h4>
+          <h4 class="store-section-title">Entrega (por km ou taxa fixa)</h4>
           <div class="row">
             <label>Taxa por km (R$)
               <input id="deliveryFeePerKm" type="number" step="0.01" min="0" value="0" />
@@ -361,7 +372,132 @@
               <input id="deliveryMinutesWeekend" type="number" min="0" max="1440" placeholder="Em branco = prazo padrão" />
             </label>
           </div>
-          <p class="muted">O cardápio usa <strong>apenas estes 3 campos</strong> de taxa (distância × taxa/km, nunca abaixo da taxa mínima; bloqueia além do limite). Taxas por bairro do seed são ignoradas quando a entrega por km está configurada. Com coordenadas da loja preenchidas, o frete é calculado ao informar o CEP. O prazo de entrega (Dom a Qui / Sex e Sáb) vale por dia do pedido e o acompanhamento conta a partir da <strong>confirmação</strong>.</p>
+          <p class="muted">O cardápio usa <strong>apenas estes 3 campos</strong> de taxa (distância × taxa/km, nunca abaixo da taxa mínima; bloqueia além do limite). Para <strong>taxa fixa</strong>, deixe a taxa por km em 0 e informe o valor fixo em Taxa mínima. Taxas por bairro do seed são ignoradas quando a entrega por km está configurada. Com coordenadas da loja preenchidas, o frete é calculado ao informar o CEP. O prazo de entrega (Dom a Qui / Sex e Sáb) vale por dia do pedido e o acompanhamento conta a partir da <strong>confirmação</strong>.</p>
+        </div>
+
+        <div class="store-tabpanel" data-store-panel="aparencia" hidden>
+          <p id="themeFabinNote" class="muted" hidden>
+            O cardápio desta loja mantém o visual original; as opções abaixo não são aplicadas a ele.
+          </p>
+          <div class="theme-layout">
+            <div class="theme-controls">
+              <h4 class="store-section-title">Modelo dos cards de produto</h4>
+              <p class="muted">Escolha como os produtos aparecem no cardápio. A prévia ao lado mostra o resultado com o seu cardápio real.</p>
+              <div class="card-model-grid" id="cardModelGrid" role="radiogroup" aria-label="Modelo dos cards">
+                <button type="button" role="radio" data-card-model="moderno">
+                  <span class="cm-thumb cm-moderno" aria-hidden="true"><i></i><b></b><span class="cm-foot"><em></em><u></u></span></span>
+                  <strong>Moderno</strong><small>Foto 16:10, preço e botão no rodapé; horizontal no celular</small>
+                </button>
+                <button type="button" role="radio" data-card-model="foto-grande">
+                  <span class="cm-thumb cm-foto-grande" aria-hidden="true"><i></i><b></b><b></b></span>
+                  <strong>Foto grande</strong><small>Foto em destaque e texto centralizado</small>
+                </button>
+                <button type="button" role="radio" data-card-model="vitrine">
+                  <span class="cm-thumb cm-vitrine" aria-hidden="true"><i></i><b></b><em></em></span>
+                  <strong>Vitrine</strong><small>Foto de ponta a ponta e preço em selo</small>
+                </button>
+                <button type="button" role="radio" data-card-model="lista-horizontal">
+                  <span class="cm-thumb cm-lista" aria-hidden="true"><i></i><b></b><b></b></span>
+                  <strong>Lista horizontal</strong><small>Foto à esquerda, texto ao lado</small>
+                </button>
+                <button type="button" role="radio" data-card-model="minimalista">
+                  <span class="cm-thumb cm-minimal" aria-hidden="true"><b></b><b></b><i></i></span>
+                  <strong>Minimalista</strong><small>Lista limpa com miniatura à direita</small>
+                </button>
+                <button type="button" role="radio" data-card-model="destaque">
+                  <span class="cm-thumb cm-destaque" aria-hidden="true"><i></i><b></b><em></em></span>
+                  <strong>Destaque</strong><small>Faixa lateral na cor da loja</small>
+                </button>
+                <button type="button" role="radio" data-card-model="compacto">
+                  <span class="cm-thumb cm-compacto" aria-hidden="true"><b></b><b></b></span>
+                  <strong>Compacto</strong><small>Só texto, sem foto, mais itens por tela</small>
+                </button>
+              </div>
+
+              <h4 class="store-section-title">Cores</h4>
+              <div class="theme-palettes" id="themePalettes">
+                <button type="button" data-palette="#1f6feb,#ffffff,#f3f4f6,#2c3e50" title="Azul clássico"><span style="background:linear-gradient(90deg,#1f6feb 50%,#f3f4f6 50%)"></span>Azul</button>
+                <button type="button" data-palette="#f97316,#fff7ed,#ffedd5,#431407" title="Laranja"><span style="background:linear-gradient(90deg,#f97316 50%,#ffedd5 50%)"></span>Laranja</button>
+                <button type="button" data-palette="#15803d,#f0fdf4,#dcfce7,#14532d" title="Verde"><span style="background:linear-gradient(90deg,#15803d 50%,#dcfce7 50%)"></span>Verde</button>
+                <button type="button" data-palette="#7c3aed,#faf5ff,#f3e8ff,#3b0764" title="Roxo"><span style="background:linear-gradient(90deg,#7c3aed 50%,#f3e8ff 50%)"></span>Roxo</button>
+                <button type="button" data-palette="#dc2626,#fef2f2,#fee2e2,#450a0a" title="Vermelho"><span style="background:linear-gradient(90deg,#dc2626 50%,#fee2e2 50%)"></span>Vermelho</button>
+                <button type="button" data-palette="#38bdf8,#1e293b,#0f172a,#f8fafc" title="Noturno"><span style="background:linear-gradient(90deg,#38bdf8 50%,#0f172a 50%)"></span>Noturno</button>
+                <button type="button" data-palette="#f59e0b,#1c1916,#12100e,#fafaf9" title="Carne e Queijo"><span style="background:linear-gradient(90deg,#f59e0b 50%,#12100e 50%)"></span>Carne e Queijo</button>
+              </div>
+              <div class="theme-segment-row">
+                <button type="button" id="themeSegmentBtn" class="ghost compact">Usar cores do segmento</button>
+                <span id="themeSegmentInfo" class="muted"></span>
+              </div>
+              <div class="theme-colors">
+                <label>Cor principal <span class="theme-color-input"><input type="color" id="themeCorPrimaria" value="#1f6feb" /><code></code></span></label>
+                <label>Fundo dos cards <span class="theme-color-input"><input type="color" id="themeCorSecundaria" value="#ffffff" /><code></code></span></label>
+                <label>Fundo da página <span class="theme-color-input"><input type="color" id="themeCorFundo" value="#f3f4f6" /><code></code></span></label>
+                <label>Texto <span class="theme-color-input"><input type="color" id="themeCorTexto" value="#2c3e50" /><code></code></span></label>
+              </div>
+              <h4 class="store-section-title">Destaque no topo</h4>
+              <p class="muted">Faixa no início do cardápio com uma chamada, o produto carro-chefe e informações rápidas (tempo médio de entrega e formas de pagamento).</p>
+              <label class="check-inline"><input type="checkbox" id="heroEnabled" /> Mostrar destaque no topo do cardápio</label>
+              <div class="hero-fields" id="heroFields">
+                <label>Produto carro-chefe
+                  <select id="heroProductId"><option value="">Sem produto (só texto)</option></select>
+                </label>
+                <label>Título
+                  <input id="heroTitle" type="text" maxlength="90" placeholder="Ex.: O verdadeiro sabor do Rei do Carne e Queijo" />
+                </label>
+                <label>Subtítulo
+                  <textarea id="heroSubtitle" rows="2" maxlength="220" placeholder="Ex.: Lanches artesanais preparados na hora, com muito queijo derretido."></textarea>
+                </label>
+                <p class="muted">Sem título, aparece o nome da loja.</p>
+              </div>
+
+              <p class="muted">Clique em <strong>Salvar</strong> para publicar. O cardápio aberto pelos clientes se atualiza sozinho em instantes.</p>
+            </div>
+            <div class="theme-preview">
+              <label>Prévia do cardápio</label>
+              <div class="theme-preview-phone">
+                <iframe id="themePreviewFrame" title="Prévia do cardápio" loading="lazy"></iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-tabpanel" data-store-panel="whatsapp" hidden>
+          <h4 class="store-section-title">Mensagem do pedido no WhatsApp</h4>
+          <p class="muted">
+            Ao concluir o pedido no cardápio, o cliente envia esta mensagem para o WhatsApp da loja.
+            As palavras entre chaves, como <code>{total}</code>, são trocadas pelos dados do pedido.
+            Linhas cujas informações estiverem vazias (por exemplo, observações não preenchidas) não aparecem.
+          </p>
+          <p id="waTemplateStatus" class="wa-template-status"></p>
+          <div class="wa-template-grid">
+            <div>
+              <label for="whatsAppOrderTemplate">Texto da mensagem</label>
+              <textarea id="whatsAppOrderTemplate" rows="20" spellcheck="false" maxlength="4000"></textarea>
+              <p class="muted wa-template-hint">Clique em uma informação para inseri-la onde está o cursor:</p>
+              <div class="wa-var-list" id="waVarList">
+                <button type="button" data-wa-var="loja" title="Nome da loja">{loja}</button>
+                <button type="button" data-wa-var="pedido" title="Número do pedido">{pedido}</button>
+                <button type="button" data-wa-var="recebimento" title="Entrega, retirada ou consumo no local">{recebimento}</button>
+                <button type="button" data-wa-var="itens" title="Lista de itens com adicionais e observações">{itens}</button>
+                <button type="button" data-wa-var="subtotal" title="Soma dos itens">{subtotal}</button>
+                <button type="button" data-wa-var="taxa_entrega" title="Valor da entrega (e distância)">{taxa_entrega}</button>
+                <button type="button" data-wa-var="total" title="Total do pedido">{total}</button>
+                <button type="button" data-wa-var="pagamento" title="Forma de pagamento, troco e Pix">{pagamento}</button>
+                <button type="button" data-wa-var="observacoes" title="Observações do cliente">{observacoes}</button>
+                <button type="button" data-wa-var="endereco_entrega" title="Endereço de entrega, retirada ou mesa">{endereco_entrega}</button>
+                <button type="button" data-wa-var="cliente" title="Nome do cliente">{cliente}</button>
+                <button type="button" data-wa-var="telefone" title="Telefone do cliente">{telefone}</button>
+              </div>
+              <div class="row">
+                <button type="button" id="waTemplateResetBtn" class="ghost compact">Restaurar mensagem padrão</button>
+              </div>
+            </div>
+            <div>
+              <label>Prévia (pedido de exemplo)</label>
+              <div class="wa-preview" id="waTemplatePreview" aria-live="polite"></div>
+            </div>
+          </div>
+          <p class="muted">Clique em <strong>Salvar</strong> para aplicar. Deixar o texto vazio volta a usar a mensagem padrão.</p>
         </div>
 
         <div class="store-tabpanel" data-store-panel="impressao" hidden>
@@ -736,10 +872,10 @@
         <div class="platform-modal-pane" data-pane="dados">
           <div class="row">
             <label>Nome
-              <input id="platformName" type="text" placeholder="Ex: Fabin Lanches" />
+              <input id="platformName" type="text" placeholder="Ex: Lanchonete do Bairro" />
             </label>
             <label>CNPJ
-              <input id="platformCnpj" type="text" placeholder="00.000.000/0000-00" inputmode="numeric" />
+              <input id="platformCnpj" type="text" placeholder="00.000.000/0000-00 ou 12.ABC.345/01DE-35" inputmode="text" maxlength="18" />
             </label>
           </div>
           <div class="row">
@@ -1056,6 +1192,18 @@
       <label class="inline"><input id="prodAvailable" type="checkbox" checked /> Disponível</label>
       <label class="inline"><input id="prodShowInMenu" type="checkbox" checked /> Exibir no cardápio</label>
       <p class="field-hint muted">Disponível = ativo no cadastro. Exibir no cardápio = aparece no front (útil para ocultar Adicionais só de descrição).</p>
+      <label>Selo de destaque
+        <select id="prodBadge">
+          <option value="">Sem selo</option>
+          <option value="rei-da-casa">👑 Rei da Casa</option>
+          <option value="mais-pedido">🔥 Mais Pedido</option>
+          <option value="novidade">✨ Novidade</option>
+          <option value="promocao">💸 Promoção</option>
+          <option value="para-dividir">🍟 Para Dividir</option>
+          <option value="vegetariano">🌱 Vegetariano</option>
+        </select>
+      </label>
+      <p class="field-hint muted">Aparece no canto da foto do produto no cardápio.</p>
       <div class="confirm-modal-actions">
         <button id="saveProdBtn" type="button">Salvar produto</button>
         <button id="cancelProdBtn" type="button" class="ghost">Cancelar</button>
@@ -1224,6 +1372,6 @@
   <script src="api-config.js?v=11"></script>
   <script src="escpos.js?v=2"></script>
   <script src="serialpos.js?v=3"></script>
-  <script src="app.js?v=207"></script>
+  <script src="app.js?v=208"></script>
 </body>
 </html>

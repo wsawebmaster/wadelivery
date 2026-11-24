@@ -32,6 +32,9 @@ public class TenantSlugTests
     [InlineData("com espaço", false)]
     [InlineData("slá", false)]
     [InlineData("-comeca-com-hiphen", false)]
+    [InlineData("admin", false)]
+    [InlineData("legacy-admin", false)]
+    [InlineData("www", false)]
     public void IsValidTenantSlug_enforces_lowercase_slug_format(string input, bool expected)
     {
         Assert.Equal(expected, CatalogInputValidation.IsValidTenantSlug(input));

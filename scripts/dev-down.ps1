@@ -1,4 +1,4 @@
-# Encerra o ambiente local iniciado por scripts/dev-up.ps1
+﻿# Encerra o ambiente local iniciado por scripts/dev-up.ps1
 #
 # Uso:
 #   .\scripts\dev-down.ps1
@@ -44,6 +44,13 @@ if (-not $KeepDocker) {
     } catch {
         Write-Host "    Docker Compose down falhou ou Docker offline: $($_.Exception.Message)" -ForegroundColor Yellow
     }
+
+    Get-CimInstance Win32_Process -Filter "Name='wsl.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -match 'wadelivery-keepalive' } |
+        ForEach-Object {
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+            Write-Ok "Sessao WSL de keep-alive encerrada (PID $($_.ProcessId))"
+        }
 } else {
     Write-Ok "Docker mantido (--KeepDocker)"
 }

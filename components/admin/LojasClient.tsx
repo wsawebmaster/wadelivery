@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminShell from './AdminShell'
 import { fetchPlatformStores, type PlatformStore } from '@/lib/admin-api'
 import StoreToolsDialog from './StoreToolsDialog'
+import BillingDialog, { billingPillClass, billingSummary, formatBillingDay } from './BillingDialog'
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 const number = new Intl.NumberFormat('pt-BR')
@@ -30,6 +31,11 @@ export default function LojasClient() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [toolsStore, setToolsStore] = useState<{ id: string; name: string; storeId: number } | null>(null)
+  const [billingStore, setBillingStore] = useState<PlatformStore | null>(null)
+  const closeBilling = useCallback(() => setBillingStore(null), [])
+  const onBillingChanged = useCallback((updated: PlatformStore) => {
+    setStores((list) => list.map((s) => (s.id === updated.id ? { ...s, ...updated, stats: s.stats } : s)))
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -127,6 +133,7 @@ export default function LojasClient() {
             const hasStoreId = typeof s.storeId === 'number'
               && Number.isInteger(s.storeId)
               && s.storeId > 0
+            const billing = billingSummary(s)
             return (
               <article key={s.id} className="wa-card flex flex-col p-4">
                 <div className="mb-2 flex items-start justify-between gap-2">
@@ -154,12 +161,14 @@ export default function LojasClient() {
                   </dd>
                   <dt className="text-[var(--text-muted)]">Mensalidade</dt>
                   <dd className="text-right">
-                    {s.courtesy ? 'Cortesia' : currency.format(Number(s.monthlyFee || 0))}
+                    {currency.format(Number(s.monthlyFee || 0))}
                   </dd>
-                  <dt className="text-[var(--text-muted)]">Pagamento</dt>
-                  <dd className="text-right">{s.paymentStatus || '—'}</dd>
+                  <dt className="text-[var(--text-muted)]">Cobrança</dt>
+                  <dd className="text-right">
+                    <span className={billingPillClass(billing.tone)}>{billing.label}</span>
+                  </dd>
                   <dt className="text-[var(--text-muted)]">Próx. vencimento</dt>
-                  <dd className="text-right">{formatDate(s.nextDueAt)}</dd>
+                  <dd className="text-right">{formatBillingDay(s.nextDueAt)}</dd>
                   <dt className="text-[var(--text-muted)]">Último acesso</dt>
                   <dd className="text-right">{formatDate(s.lastAccessAt)}</dd>
                   <dt className="text-[var(--text-muted)]">Cardápio 30d</dt>
@@ -186,6 +195,9 @@ export default function LojasClient() {
                   >
                     Administrar
                   </button>
+                  <button type="button" className="wa-btn wa-btn-ghost" onClick={() => setBillingStore(s)}>
+                    Cobrança
+                  </button>
                   <Link href="/admin/legado" className="wa-btn wa-btn-primary">
                     Gerenciar
                   </Link>
@@ -206,7 +218,7 @@ export default function LojasClient() {
                       rel="noreferrer"
                       className="wa-btn wa-btn-ghost"
                     >
-                      Painel ↗
+                      Painel da loja ↗
                     </a>
                   )}
                 </div>
@@ -221,6 +233,14 @@ export default function LojasClient() {
           storeId={toolsStore.storeId}
           storeName={toolsStore.name}
           onClose={() => setToolsStore(null)}
+        />
+      )}
+      {billingStore && (
+        <BillingDialog
+          key={billingStore.id}
+          store={billingStore}
+          onClose={closeBilling}
+          onChanged={onBillingChanged}
         />
       )}
     </AdminShell>

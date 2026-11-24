@@ -36,6 +36,7 @@ public class EfAdminUserRepository(CatalogDbContext db) : IAdminUserRepository
         var user = await FindTrackedAsync(username, tracked: true, ct);
         if (user is null) return false;
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.MustChangePassword = false; // o próprio usuário escolheu a senha
         await db.SaveChangesAsync(ct);
         return true;
     }
@@ -118,6 +119,8 @@ public class EfAdminUserRepository(CatalogDbContext db) : IAdminUserRepository
         var user = await db.AdminUsers.FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user is null) return false;
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        // Redefinida pela plataforma ou pelo administrador da loja: troca obrigatória no próximo acesso.
+        user.MustChangePassword = true;
         await db.SaveChangesAsync(ct);
         return true;
     }

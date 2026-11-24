@@ -139,11 +139,56 @@ export interface PlatformStore {
   phone: string | null
   contactName: string | null
   stats: StoreStats | null
+  courtesyUntil?: string | null
+  paymentNotes?: string | null
+  payments?: PlatformPayment[]
+  billingBlocked?: boolean
+  billingBlockSuspendedUntil?: string | null
   [key: string]: unknown
 }
 
 export function fetchPlatformStores(): Promise<PlatformStore[]> {
   return adminFetch<PlatformStore[]>('/api/v1/admin/platform-stores')
+}
+
+export interface PlatformPayment {
+  paidAt: string
+  amount: number
+  note: string | null
+}
+
+export interface UpdateBillingInput {
+  monthlyFee?: number
+  courtesy?: boolean
+  courtesyUntil?: string | null
+  clearCourtesyUntil?: boolean
+  nextDueAt?: string | null
+  paymentNotes?: string | null
+}
+
+const jsonInit = (method: string, body: unknown): RequestInit => ({
+  method,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+})
+
+export function updatePlatformBilling(id: string, input: UpdateBillingInput): Promise<PlatformStore> {
+  return adminFetch<PlatformStore>(`/api/v1/admin/platform-stores/${id}/billing`, jsonInit('PATCH', input))
+}
+
+export function registerPlatformPayment(
+  id: string,
+  input: { paidAt?: string; amount?: number; note?: string; nextDueAt?: string },
+): Promise<PlatformStore> {
+  return adminFetch<PlatformStore>(`/api/v1/admin/platform-stores/${id}/payments`, jsonInit('POST', input))
+}
+
+export function setPlatformStoreBlocked(id: string, blocked: boolean): Promise<PlatformStore> {
+  return adminFetch<PlatformStore>(`/api/v1/admin/platform-stores/${id}/block`, jsonInit('POST', { blocked }))
+}
+
+export function runPlatformBilling(): Promise<{ changed: number }> {
+  return adminFetch<{ changed: number }>('/api/v1/admin/platform-stores/billing/run', { method: 'POST' })
 }
 
 export interface StoreToolsStatus {
@@ -252,6 +297,47 @@ export function syncStoreFromRemote(
   })
   return adminFetch<StoreToolsSyncReport>(
     `${storeToolsPath(storeId)}/sync-from-remote?${query.toString()}`,
+    { method: 'POST' }
+  )
+}
+
+export interface StoreToolsOrdersPreview {
+  mode: string
+  remoteBaseUrl: string | null
+  warnings: string[]
+  ordersToCreate: number
+  ordersToReplace: number
+  ordersEqual: number
+  totalRemote: number
+  sampleNewOrderIds: string[]
+  error: string | null
+}
+
+export interface StoreToolsOrdersSyncReport {
+  storeId: number
+  dryRun: boolean
+  mode: string
+  ordersCreated: number
+  ordersReplaced: number
+  ordersEqual: number
+  ordersFailed: number
+  warnings: string[]
+  error: string | null
+}
+
+export function previewStoreOrdersFromRemote(storeId: number): Promise<StoreToolsOrdersPreview> {
+  return adminFetch<StoreToolsOrdersPreview>(`${storeToolsPath(storeId)}/orders-preview`, {
+    method: 'POST',
+  })
+}
+
+export function syncStoreOrdersFromRemote(
+  storeId: number,
+  dryRun: boolean
+): Promise<StoreToolsOrdersSyncReport> {
+  const query = new URLSearchParams({ dryRun: String(dryRun) })
+  return adminFetch<StoreToolsOrdersSyncReport>(
+    `${storeToolsPath(storeId)}/orders-sync?${query.toString()}`,
     { method: 'POST' }
   )
 }

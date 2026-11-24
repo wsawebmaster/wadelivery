@@ -37,8 +37,7 @@ export function Hero({ onOpenLead }: HeroProps) {
 
           <ul className="hero-trust">
             <li>
-              <span className="trust-num" data-count="0"><CountUp target={0} /></span>
-              <span className="trust-unit">%</span>
+              <CountUp target={0} suffix="%" />
               <span className="trust-label">comissão por pedido</span>
             </li>
             <li>

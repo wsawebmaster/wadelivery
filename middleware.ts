@@ -30,6 +30,9 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)',
+    // Arquivos estáticos e os apps publicados em public/ (painel e cardápio) não são
+    // reescritos para /{slug}: em subdomínio, /legacy-admin/index.html deve continuar
+    // apontando para o arquivo, não para /{slug}/legacy-admin/...
+    '/((?!_next/static|_next/image|legacy-admin/|storefront/|favicon.ico|icon.svg|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|html|json|webmanifest|map)$).*)',
   ],
 }

@@ -30,6 +30,8 @@ public class CatalogPricingClient
             http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", authorization);
     }
 
+    public const string StoreUnavailableMessage = "Loja indisponível no momento. Não é possível fazer pedidos.";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -43,6 +45,12 @@ public class CatalogPricingClient
         try
         {
             catalog = await http.GetFromJsonAsync<CatalogPayload>("api/v1/catalog", JsonOptions, ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            // Loja bloqueada (inadimplência ou bloqueio manual): o catálogo responde 403.
+            logger.LogInformation("Pedido recusado: loja inativa");
+            return ([], 0, StoreUnavailableMessage);
         }
         catch (Exception ex)
         {
@@ -212,9 +220,11 @@ public class CatalogPricingClient
             if (store is null)
                 return (0, "Loja indisponível para calcular entrega.");
 
+            // Por km (taxa/km > 0) ou taxa fixa (taxa/km 0 + taxa mínima > 0): ambos usam a
+            // cotação por distância, que aplica o raio máximo.
             var usesKm = store.Latitude is not null
                 && store.Longitude is not null
-                && store.DeliveryFeePerKm > 0;
+                && (store.DeliveryFeePerKm > 0 || store.MinDeliveryFee > 0);
 
             if (usesKm)
             {

@@ -60,7 +60,7 @@ public class PlatformStoresTests : IAsyncLifetime
     private static UpsertPlatformStoreRequest ValidStore(string name) => new()
     {
         Name = name,
-        Cnpj = "12.345.678/0001-90",
+        Cnpj = "04.252.011/0001-10",
         RazaoSocial = $"{name} LTDA",
         ContactName = "Contato",
         Phone = "(11) 99999-0000",
@@ -268,7 +268,7 @@ public class PlatformStoresTests : IAsyncLifetime
     {
         var (created, _) = await CreateStoreAsync("Antiga");
         var patch = ValidStore("Antiga (renomeada)");
-        patch.Cnpj = "98.765.432/0001-10";
+        patch.Cnpj = "33.000.167/0001-01";
         patch.City = "Franca";
         patch.Status = "inactive";
         patch.Active = false;
@@ -278,7 +278,7 @@ public class PlatformStoresTests : IAsyncLifetime
         resp.EnsureSuccessStatusCode();
         var updated = await resp.Content.ReadFromJsonAsync<PlatformStoreDto>();
         Assert.NotNull(updated);
-        Assert.Equal("98765432000110", updated.Cnpj);
+        Assert.Equal("33000167000101", updated.Cnpj);
         Assert.Equal("Franca", updated.City);
         Assert.Equal("inactive", updated.Status);
         Assert.False(updated.Active);

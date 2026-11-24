@@ -2,6 +2,7 @@ using System.Text.Json;
 using Catalog.Api;
 using Catalog.Api.Data;
 using Catalog.Api.Models;
+using Catalog.Api.Services;
 using Catalog.Api.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -155,6 +156,18 @@ public class EfCatalogRepository(
         if (request.AllowCustomerChooseWaiter is not null) entity.AllowCustomerChooseWaiter = request.AllowCustomerChooseWaiter.Value;
         if (request.TableCount is not null) entity.TableCount = request.TableCount.Value;
         if (request.WaiterSessionHours is not null) entity.WaiterSessionHours = Math.Clamp(request.WaiterSessionHours.Value, 1, 24);
+        if (request.TipoCard is not null) entity.TipoCard = request.TipoCard;
+        if (request.HeroEnabled is not null) entity.HeroEnabled = request.HeroEnabled.Value;
+        if (request.HeroProductId is not null) entity.HeroProductId = NullIfEmpty(request.HeroProductId);
+        if (request.HeroTitle is not null) entity.HeroTitle = NullIfEmpty(request.HeroTitle);
+        if (request.HeroSubtitle is not null) entity.HeroSubtitle = NullIfEmpty(request.HeroSubtitle);
+        if (request.CorPrimaria is not null) entity.CorPrimaria = request.CorPrimaria;
+        if (request.CorSecundaria is not null) entity.CorSecundaria = request.CorSecundaria;
+        if (request.CorFundo is not null) entity.CorFundo = request.CorFundo;
+        if (request.CorTexto is not null) entity.CorTexto = request.CorTexto;
+        if (request.ResetWhatsAppOrderTemplate == true) entity.WhatsAppOrderTemplate = null;
+        else if (request.WhatsAppOrderTemplate is not null)
+            entity.WhatsAppOrderTemplate = WhatsAppOrderTemplate.Normalize(request.WhatsAppOrderTemplate);
 
         entity.DataAtualizacao = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
@@ -351,7 +364,8 @@ public class EfCatalogRepository(
                 ImageUrl = request.ImageUrl,
                 Description = NullIfEmpty(request.Description),
                 SortOrder = sort,
-                ModifierGroupsJson = ModifierGroups.Serialize(request.ModifierGroups)
+                ModifierGroupsJson = ModifierGroups.Serialize(request.ModifierGroups),
+                Badge = CatalogInputValidation.NormalizeProductBadge(request.Badge)
             };
             db.Products.Add(entity);
         }
@@ -369,6 +383,8 @@ public class EfCatalogRepository(
             entity.Description = NullIfEmpty(request.Description);
             if (request.ModifierGroups is not null)
                 entity.ModifierGroupsJson = ModifierGroups.Serialize(request.ModifierGroups);
+            if (request.Badge is not null)
+                entity.Badge = CatalogInputValidation.NormalizeProductBadge(request.Badge);
             if (request.SortOrder is not null)
                 entity.SortOrder = request.SortOrder.Value;
             else if (categoryChanged)
@@ -396,26 +412,20 @@ public class EfCatalogRepository(
         InvalidateCache();
     }
 
-    public async Task<string> AllocateNextProductIdAsync(CancellationToken ct = default)
-    {
-        var storeId = tenant.StoreId;
-        var ids = await db.Products.AsNoTracking().Where(p => p.StoreId == storeId).Select(p => p.Id).ToListAsync(ct);
-        return NextNumericId(ids);
-    }
+    // As chaves de products/categories/ingredients são globais (todas as lojas na mesma tabela).
+    // "Maior id numérico da loja + 1" colidia com ids de outras lojas (ex.: loja nova gerava "1",
+    // já usado pela loja 1) → PK duplicada e 500 ao criar pelo painel. Ids novos são GUIDs,
+    // como no provisionamento da loja; os ids numéricos existentes continuam válidos.
+    public Task<string> AllocateNextProductIdAsync(CancellationToken ct = default) =>
+        Task.FromResult(NewEntityId());
 
-    public async Task<string> AllocateNextCategoryIdAsync(CancellationToken ct = default)
-    {
-        var storeId = tenant.StoreId;
-        var ids = await db.Categories.AsNoTracking().Where(c => c.StoreId == storeId).Select(c => c.Id).ToListAsync(ct);
-        return NextNumericId(ids);
-    }
+    public Task<string> AllocateNextCategoryIdAsync(CancellationToken ct = default) =>
+        Task.FromResult(NewEntityId());
 
-    public async Task<string> AllocateNextIngredientIdAsync(CancellationToken ct = default)
-    {
-        var storeId = tenant.StoreId;
-        var ids = await db.Ingredients.AsNoTracking().Where(i => i.StoreId == storeId).Select(i => i.Id).ToListAsync(ct);
-        return NextNumericId(ids);
-    }
+    public Task<string> AllocateNextIngredientIdAsync(CancellationToken ct = default) =>
+        Task.FromResult(NewEntityId());
+
+    public static string NewEntityId() => Guid.NewGuid().ToString("N");
 
     internal static string NextNumericId(IEnumerable<string> ids)
     {
@@ -574,7 +584,8 @@ return new ProductDto(
             p.PriceMedia,
             p.PriceInteira,
             p.ShowInMenu,
-            ModifierGroups.Deserialize(p.ModifierGroupsJson));
+            ModifierGroups.Deserialize(p.ModifierGroupsJson),
+            p.Badge);
     }
 
     private static decimal ResolveListPrice(UpsertProductRequest request)
@@ -656,7 +667,13 @@ return new ProductDto(
             entity.LayoutCardapio,
             entity.EstiloBotao,
             entity.BannerUrl,
-            entity.CoverUrl);
+            entity.CoverUrl,
+            entity.WhatsAppOrderTemplate ?? WhatsAppOrderTemplate.Default,
+            entity.WhatsAppOrderTemplate is not null,
+            entity.HeroEnabled,
+            entity.HeroProductId,
+            entity.HeroTitle,
+            entity.HeroSubtitle);
     }
 
     private static string? NormalizeCategoryId(string? value) =>

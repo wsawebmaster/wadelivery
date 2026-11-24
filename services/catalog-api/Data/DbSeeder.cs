@@ -22,7 +22,11 @@ public static class DbSeeder
         await db.Database.EnsureCreatedAsync(ct);
 
         if (await db.Stores.AnyAsync(ct))
+        {
+            await SyncStoreIdSequenceAsync(db, ct);
+            await MigrateStoreAdminUrlsAsync(db, ct);
             return;
+        }
 
         var configuredRoot = config["Data:Root"];
         string dataRoot;
@@ -163,6 +167,43 @@ public static class DbSeeder
         });
 
         await db.SaveChangesAsync(ct);
+        await SyncStoreIdSequenceAsync(db, ct);
+    }
+
+    /// <summary>
+    /// O seed insere a loja inicial com Id explícito (1), o que não avança a sequência
+    /// identity de "stores". Sem este ajuste, a primeira loja provisionada recebe Id 1
+    /// e falha com violação de PK_stores. Idempotente: roda a cada inicialização.
+    /// </summary>
+    /// <summary>
+    /// Lojas provisionadas antes do painel por loja apontavam para /admin/legado (painel
+    /// compartilhado). Troca para /{slug}/admin. Só altera URLs que terminam em
+    /// /admin/legado; endereços externos (ex.: painel em produção) ficam intactos.
+    /// </summary>
+    private static async Task MigrateStoreAdminUrlsAsync(CatalogDbContext db, CancellationToken ct)
+    {
+        if (!db.Database.IsNpgsql()) return;
+        await TryAlterAsync(db, """
+            UPDATE platform_stores AS p
+            SET "AdminUrl" = regexp_replace(p."AdminUrl", '/admin/legado/?$', '/' || s."Slug" || '/admin'),
+                "LocalAdminUrl" = regexp_replace(p."LocalAdminUrl", '/admin/legado/?$', '/' || s."Slug" || '/admin')
+            FROM stores AS s
+            WHERE s."Id" = p."StoreId"
+              AND s."Slug" IS NOT NULL
+              AND (p."AdminUrl" ~ '/admin/legado/?$' OR p."LocalAdminUrl" ~ '/admin/legado/?$')
+            """, ct);
+    }
+
+    private static async Task SyncStoreIdSequenceAsync(CatalogDbContext db, CancellationToken ct)
+    {
+        if (!db.Database.IsNpgsql()) return;
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            SELECT setval(
+                pg_get_serial_sequence('stores', 'Id'),
+                GREATEST((SELECT COALESCE(MAX("Id"), 0) FROM stores), 1),
+                (SELECT COUNT(*) > 0 FROM stores))
+            """, ct);
     }
 
     /// <summary>
@@ -241,7 +282,8 @@ public static class DbSeeder
         var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
         await db.Database.EnsureCreatedAsync(ct);
         await db.Database.MigrateAsync(ct);
-        await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "Cnpj" character varying(14) NULL""", ct);
+        await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "Cnpj" character varying(18) NULL""", ct);
+        await TryAlterAsync(db, """ALTER TABLE stores ALTER COLUMN "Cnpj" TYPE character varying(18)""", ct);
         await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "Email" character varying(200) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "BannerUrl" character varying(500) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "CoverUrl" character varying(500) NULL""", ct);
@@ -282,6 +324,11 @@ ct);
         await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "AllowCustomerChooseWaiter" boolean NOT NULL DEFAULT FALSE""", ct);
         await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "TableCount" integer NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "WaiterSessionHours" integer NOT NULL DEFAULT 8""", ct);
+        await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "WhatsAppOrderTemplate" text NULL""", ct);
+        await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "HeroEnabled" boolean NOT NULL DEFAULT FALSE""", ct);
+        await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "HeroProductId" character varying(96) NULL""", ct);
+        await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "HeroTitle" character varying(90) NULL""", ct);
+        await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "HeroSubtitle" character varying(220) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE stores ADD COLUMN IF NOT EXISTS "Slug" character varying(100) NULL""", ct);
         // Slug único por loja para a resolução de subdomínio (x-tenant-slug → loja).
         await TryAlterAsync(db, """CREATE UNIQUE INDEX IF NOT EXISTS "IX_stores_Slug" ON stores ("Slug") WHERE "Slug" IS NOT NULL""", ct);
@@ -299,6 +346,10 @@ ct);
             """, ct);
         await TryAlterAsync(db, """ALTER TABLE products ADD COLUMN IF NOT EXISTS "Description" character varying(800) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE products ADD COLUMN IF NOT EXISTS "SortOrder" integer NOT NULL DEFAULT 0""", ct);
+        await TryAlterAsync(db, """ALTER TABLE products ADD COLUMN IF NOT EXISTS "Badge" character varying(32) NULL""", ct);
+        await TryAlterAsync(db, """ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS "MustChangePassword" boolean NOT NULL DEFAULT FALSE""", ct);
+        await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "BillingBlocked" boolean NOT NULL DEFAULT FALSE""", ct);
+        await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "BillingBlockSuspendedUntil" timestamp with time zone NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE products ADD COLUMN IF NOT EXISTS "PriceMedia" numeric(10,2) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE products ADD COLUMN IF NOT EXISTS "PriceInteira" numeric(10,2) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE products ADD COLUMN IF NOT EXISTS "ShowInMenu" boolean NOT NULL DEFAULT TRUE""", ct);
@@ -493,7 +544,8 @@ ct);
         await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "LocalAdminUrl" character varying(500) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "LocalDatabaseUrl" character varying(500) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "StoreId" integer NULL""", ct);
-        await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "Cnpj" character varying(14) NULL""", ct);
+        await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "Cnpj" character varying(18) NULL""", ct);
+        await TryAlterAsync(db, """ALTER TABLE platform_stores ALTER COLUMN "Cnpj" TYPE character varying(18)""", ct);
         await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "RazaoSocial" character varying(200) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "ContactName" character varying(120) NULL""", ct);
         await TryAlterAsync(db, """ALTER TABLE platform_stores ADD COLUMN IF NOT EXISTS "Phone" character varying(30) NULL""", ct);

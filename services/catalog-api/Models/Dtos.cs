@@ -94,7 +94,16 @@ public record StoreDto(
     string? LayoutCardapio = null,
     string? EstiloBotao = null,
     string? BannerUrl = null,
-    string? CoverUrl = null);
+    string? CoverUrl = null,
+    /// <summary>Modelo da mensagem de WhatsApp do pedido. Na leitura vem sempre preenchido (personalizado ou padrão).</summary>
+    string? WhatsAppOrderTemplate = null,
+    /// <summary>true quando a loja usa um modelo personalizado; false quando usa o padrão.</summary>
+    bool WhatsAppOrderTemplateCustomized = false,
+    /// <summary>Destaque no topo do cardápio: faixa com título, subtítulo e produto carro-chefe.</summary>
+    bool HeroEnabled = false,
+    string? HeroProductId = null,
+    string? HeroTitle = null,
+    string? HeroSubtitle = null);
 
 /// <summary>
 /// Resposta pública de resolução de subdomínio → loja (endpoint <c>/api/v1/tenant/{slug}</c>).
@@ -161,7 +170,9 @@ public record ProductDto(
     decimal? PriceMedia = null,
     decimal? PriceInteira = null,
     bool ShowInMenu = true,
-    List<ModifierGroupDto>? ModifierGroups = null);
+    List<ModifierGroupDto>? ModifierGroups = null,
+    /// <summary>Selo de destaque no card (ex.: "rei-da-casa", "mais-pedido"); null = sem selo.</summary>
+    string? Badge = null);
 
 public record CategoryDto(
     string Id,
@@ -174,7 +185,7 @@ public record CatalogDto(List<CategoryDto> Categories);
 
 public record LoginRequest(string Username, string Password);
 
-public record LoginResponse(string Token, DateTime ExpiresAt, string Username, string Role, int? StoreId = null);
+public record LoginResponse(string Token, DateTime ExpiresAt, string Username, string Role, int? StoreId = null, bool MustChangePassword = false);
 
 public record UpsertCategoryRequest(string? Id, string Title, int? SortOrder = null, bool ShowInMenu = true);
 
@@ -194,7 +205,9 @@ public record UpsertProductRequest(
     decimal? PriceInteira = null,
     bool ShowInMenu = true,
     List<ModifierGroupDto>? ModifierGroups = null,
-    List<string>? PrincipalIngredientIds = null);
+    List<string>? PrincipalIngredientIds = null,
+    /// <summary>Selo do card. null = mantém o atual; "" = remove o selo.</summary>
+    string? Badge = null);
 
 public record MoveItemRequest(string Direction);
 
@@ -227,6 +240,23 @@ public class PatchStoreRequest
     public DateTime? ExtendedCloseUntilUtc { get; set; }
     /// <summary>Quando true, limpa a extensão de horário (útil ao encerrar expediente).</summary>
     public bool? ClearExtendedCloseUntil { get; set; }
+    /// <summary>Modelo personalizado da mensagem de WhatsApp do pedido (texto com variáveis {nome}).</summary>
+    public string? WhatsAppOrderTemplate { get; set; }
+    // ── Aparência do cardápio (painel → Loja → Aparência) ──
+    /// <summary>Modelo do card de produto (ver CatalogInputValidation.CardTypes).</summary>
+    public string? TipoCard { get; set; }
+    public string? CorPrimaria { get; set; }
+    public string? CorSecundaria { get; set; }
+    public string? CorFundo { get; set; }
+    public string? CorTexto { get; set; }
+    // ── Destaque no topo (painel → Loja → Aparência) ──
+    public bool? HeroEnabled { get; set; }
+    /// <summary>Produto carro-chefe. "" remove o produto do destaque.</summary>
+    public string? HeroProductId { get; set; }
+    public string? HeroTitle { get; set; }
+    public string? HeroSubtitle { get; set; }
+    /// <summary>Quando true, volta a usar o modelo padrão da mensagem de WhatsApp.</summary>
+    public bool? ResetWhatsAppOrderTemplate { get; set; }
     /// <summary>Quando true, o orders-api avança pedidos confirmados para "Em preparação" automaticamente.</summary>
     public bool? AutoAdvancePreparing { get; set; }
     /// <summary>Minutos após a confirmação até avançar para "Em preparação" (padrão 5).</summary>
@@ -332,7 +362,24 @@ public record PlatformStoreDto(
     DateTime? LastAccessAt = null,
     string? BackUsername = null,
     string? BackPassword = null,
-    StoreStatsDto? Stats = null);
+    StoreStatsDto? Stats = null,
+    /// <summary>Bloqueada automaticamente por mensalidade em atraso.</summary>
+    bool BillingBlocked = false,
+    DateTime? BillingBlockSuspendedUntil = null);
+
+/// <summary>Ajuste da cobrança da loja (painel da plataforma → Cobrança). Campos nulos não mudam.</summary>
+public class UpdatePlatformBillingRequest
+{
+    public decimal? MonthlyFee { get; set; }
+    public bool? Courtesy { get; set; }
+    /// <summary>Fim da cortesia/teste grátis. Use ClearCourtesyUntil para cortesia sem prazo.</summary>
+    public DateTime? CourtesyUntil { get; set; }
+    public bool? ClearCourtesyUntil { get; set; }
+    public DateTime? NextDueAt { get; set; }
+    public string? PaymentNotes { get; set; }
+}
+
+public record SetPlatformStoreBlockedRequest(bool Blocked);
 
 /// <summary>
 /// Snapshot de estatísticas da loja (acessos ao cardápio digital e pedidos), obtido

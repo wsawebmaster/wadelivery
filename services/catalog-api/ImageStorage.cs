@@ -80,6 +80,32 @@ public static class ImageStorage
         }
     }
 
+    /// <summary>
+    /// Foto de produto já pronta (ex.: produtos de exemplo do cadastro): recorte quadrado
+    /// centralizado, sem remoção de fundo, em WebP. Retorna /uploads/products/{fileName}.webp.
+    /// </summary>
+    public static async Task<string> SaveProductPhotoAsync(
+        Stream source,
+        string uploadsRoot,
+        string fileSlug,
+        CancellationToken ct,
+        int size = ProductImageSize)
+    {
+        using var image = await Image.LoadAsync<Rgba32>(source, ct);
+        image.Mutate(x => x.Resize(new ResizeOptions
+        {
+            Size = new Size(size, size),
+            Mode = ResizeMode.Crop,
+            Position = AnchorPositionMode.Center
+        }));
+        var dir = Path.Combine(uploadsRoot, "products");
+        Directory.CreateDirectory(dir);
+        var fileName = ResolveFileName(dir, SlugifyProductName(fileSlug), null);
+        await using var fs = File.Create(Path.Combine(dir, fileName));
+        await image.SaveAsync(fs, new WebpEncoder { FileFormat = WebpFileFormatType.Lossy, Quality = 80 }, ct);
+        return $"/uploads/products/{fileName}";
+    }
+
     public static async Task<string> SaveTenantImageAsync(
         Stream source,
         string uploadsRoot,

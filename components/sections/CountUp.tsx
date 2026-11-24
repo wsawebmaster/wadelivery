@@ -10,13 +10,18 @@ interface CountUpProps {
 }
 
 export function CountUp({ target, duration = 900, className = '', suffix }: CountUpProps) {
-  const [value, setValue] = useState(0)
+  // Renderiza o valor final no servidor: sem JS (ou antes da animação) o número já é correto.
+  const [value, setValue] = useState(target)
   const ref = useRef<HTMLSpanElement>(null)
   const doneRef = useRef(false)
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
+    if (!el || target === 0) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (typeof IntersectionObserver === 'undefined') return
+
+    setValue(0)
 
     const observer = new IntersectionObserver(
       (entries) => {

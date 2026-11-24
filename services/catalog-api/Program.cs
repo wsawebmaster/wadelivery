@@ -1,9 +1,11 @@
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Catalog.Api;
 using Catalog.Api.Data;
+using Microsoft.AspNetCore.HttpOverrides;
 using Catalog.Api.MultiTenancy;
 using Catalog.Api.Models;
 using Catalog.Api.Repositories;
@@ -86,6 +88,8 @@ if (usePostgres)
     builder.Services.AddScoped<IPlatformStoreRepository, EfPlatformStoreRepository>();
     builder.Services.AddScoped<IAdminUserRepository, EfAdminUserRepository>();
     builder.Services.AddScoped<IPinSessionStore, EfPinSessionStore>();
+    // Cobrança de mensalidades: fim do teste grátis, vencimento e bloqueio automático.
+    builder.Services.AddHostedService<Catalog.Api.Services.BillingWorker>();
 
     // Barramento de invalidação de cache (LISTEN/NOTIFY no PostgreSQL) — somente com
     // Persistence=PostgreSQL; o modo Json (usado pelos testes) não registra o serviço.
@@ -104,6 +108,10 @@ else
 }
 
 builder.Services.AddSingleton(new DbExplorerService(dbConn));
+
+builder.Services.AddScoped<SignupGuardService>();
+builder.Services.AddHttpClient("captcha", c => c.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddScoped<ICaptchaValidationService, CaptchaValidationService>();
 
 // Resolução de subdomínio → loja (x-tenant-slug). Funciona em Json (slug padrão) e PostgreSQL com cache em memória.
 builder.Services.AddScoped<TenantResolverService>(sp => new TenantResolverService(
@@ -181,6 +189,11 @@ builder.Services.AddCors(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsync("{\"error\":\"Muitas tentativas. Aguarde alguns minutos e tente novamente.\"}", ct);
+    };
     options.AddPolicy("login", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: $"{httpContext.Connection.RemoteIpAddress}:login",
@@ -195,8 +208,8 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: $"{httpContext.Connection.RemoteIpAddress}:signup",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 3,
-                Window = TimeSpan.FromMinutes(15),
+                PermitLimit = builder.Configuration.GetValue("SignupQuota:RateLimitPermit", 5),
+                Window = TimeSpan.FromMinutes(builder.Configuration.GetValue("SignupQuota:RateLimitWindowMinutes", 15)),
                 QueueLimit = 0
             }));
     options.AddPolicy("geo", httpContext =>
@@ -247,6 +260,27 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOIN
 
 var app = builder.Build();
 
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+var trustedProxies = builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+var trustedNetworks = builder.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+if (trustedProxies.Length > 0 || trustedNetworks.Length > 0)
+{
+    forwardedOptions.KnownProxies.Clear();
+    forwardedOptions.KnownIPNetworks.Clear();
+    foreach (var proxy in trustedProxies)
+        if (IPAddress.TryParse(proxy, out var ip)) forwardedOptions.KnownProxies.Add(ip);
+    foreach (var network in trustedNetworks)
+    {
+        var parts = network.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 2 && IPAddress.TryParse(parts[0], out var prefix) && int.TryParse(parts[1], out var prefixLength))
+            forwardedOptions.KnownIPNetworks.Add(new System.Net.IPNetwork(prefix, prefixLength));
+    }
+    app.UseForwardedHeaders(forwardedOptions);
+}
+
 if (usePostgres)
 {
     for (var attempt = 1; attempt <= 20; attempt++)
@@ -289,6 +323,9 @@ void ApplyUploadsCacheHeaders(Microsoft.AspNetCore.StaticFiles.StaticFileRespons
 {
     ctx.Context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     ctx.Context.Response.Headers["X-Frame-Options"] = "DENY";
+    // Logos padrão são SVG: aberto direto no navegador, nenhum script ou recurso externo roda.
+    if (ctx.File.Name.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+        ctx.Context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
     if (ctx.Context.Request.Path.StartsWithSegments("/uploads"))
         ctx.Context.Response.Headers["Cache-Control"] = "no-cache";
 }
@@ -369,6 +406,13 @@ api.MapGet("/store", async (HttpRequest request, ICatalogRepository repo, IPlatf
     var active = Catalog.Api.StoreAvailability.Resolve(store.StoreName, origin, platformStores, storeId);
     return Results.Ok(store with { Active = active });
 });
+
+// Paletas padrão por segmento (cadastro de loja e painel → Aparência). Público e estático.
+api.MapGet("/segment-palettes", () => Results.Ok(new
+{
+    defaultPalette = Catalog.Api.Services.SegmentPalettes.Default,
+    segments = Catalog.Api.Services.SegmentPalettes.All
+}));
 
 api.MapGet("/store/status", async (ICatalogRepository repo, TenantContext tenant, CancellationToken ct) =>
 {
@@ -469,11 +513,14 @@ api.MapPost("/delivery/quote", async (DeliveryQuoteRequest body, ICatalogReposit
         return Results.BadRequest(new { error = "Nenhum tenant foi informado. Forneça o cabeçalho X-Tenant-Slug." });
 
     var store = await repo.GetStoreAsync(ct);
-    if (store.Latitude is null || store.Longitude is null || store.DeliveryFeePerKm <= 0)
+    // Configurada = loja com coordenadas e taxa/km > 0 (por km) ou taxa mínima > 0 com
+    // taxa/km 0 (taxa fixa dentro do raio).
+    if (store.Latitude is null || store.Longitude is null
+        || (store.DeliveryFeePerKm <= 0 && store.MinDeliveryFee <= 0))
     {
         return Results.Ok(new DeliveryQuoteResponse(
             false,
-            "Entrega por km não configurada. Defina endereço da loja, taxa por km e limite no painel.",
+            "Entrega não configurada. Defina o endereço da loja, a taxa (por km ou fixa) e o limite no painel.",
             0, 0, store.MaxDeliveryKm, false, "unconfigured",
             store.DeliveryFeePerKm, store.MinDeliveryFee));
     }
@@ -556,7 +603,7 @@ api.MapPost("/delivery/quote", async (DeliveryQuoteRequest body, ICatalogReposit
         fee,
         store.MaxDeliveryKm,
         within,
-        "km",
+        store.DeliveryFeePerKm > 0 ? "km" : "fixed",
         store.DeliveryFeePerKm,
         store.MinDeliveryFee));
 }).RequireRateLimiting("geo");
@@ -588,7 +635,8 @@ api.MapGet("/auth/me", async (ClaimsPrincipal user, AuthService auth, Cancellati
         username,
         role,
         storeId = int.TryParse(user.FindFirstValue("store_id"), out var sid) ? (int?)sid : null,
-        displayName
+        displayName,
+        mustChangePassword = await auth.GetMustChangePasswordAsync(username, ct)
     });
 }).RequireAuthorization();
 
@@ -645,6 +693,39 @@ admin.MapPatch("/store", async (PatchStoreRequest body, ICatalogRepository repo,
     await repo.UpdateStoreAsync(body, ct);
     return Results.Ok(await repo.GetStoreAsync(ct));
 });
+
+// Situação da mensalidade da própria loja (banner do painel do lojista).
+admin.MapGet("/billing", async (IPlatformStoreRepository platform, TenantContext tenant, IConfiguration config, CancellationToken ct) =>
+{
+    if (!tenant.TryGetStoreId(out var storeId) || storeId <= 0)
+        return Results.BadRequest(new { error = "Nenhum tenant foi informado." });
+    var stores = await platform.ListAsync(ct);
+    var p = stores.FirstOrDefault(x => x.StoreId == storeId);
+    if (p is null) return Results.Ok(new { tracked = false });
+    var options = Catalog.Api.Services.BillingOptions.FromConfig(config);
+    var now = DateTime.UtcNow;
+    var charged = !p.Courtesy && p.MonthlyFee > 0 && p.NextDueAt is not null;
+    return Results.Ok(new
+    {
+        tracked = true,
+        monthlyFee = p.MonthlyFee,
+        courtesy = p.Courtesy,
+        courtesyUntil = p.CourtesyUntil,
+        paymentStatus = p.PaymentStatus,
+        nextDueAt = p.NextDueAt,
+        lastPaymentAt = p.LastPaymentAt,
+        active = p.Active,
+        billingBlocked = p.BillingBlocked,
+        daysOverdue = charged ? Catalog.Api.Services.BillingPolicy.DaysOverdue(p.NextDueAt, now) : 0,
+        daysUntilDue = charged ? Math.Max(0, (p.NextDueAt!.Value.Date - now.Date).Days) : (int?)null,
+        blockAt = charged ? Catalog.Api.Services.BillingPolicy.BlockDate(p.NextDueAt, options.BlockAfterDays) : null,
+        blockAfterDays = options.BlockAfterDays,
+    });
+});
+
+// Texto padrão da mensagem de WhatsApp do pedido (botão "Restaurar padrão" do painel).
+admin.MapGet("/whatsapp-order-template/default", () =>
+    Results.Ok(new { template = Catalog.Api.Services.WhatsAppOrderTemplate.Default }));
 
 var ops = api.MapGroup("/ops").RequireAuthorization("OrdersStaff");
 ops.MapGet("/accepting-orders", async (ICatalogRepository repo, CancellationToken ct) =>
@@ -1377,12 +1458,38 @@ platform.MapPost("/{id:guid}/duplicate", async (Guid id, UpsertPlatformStoreRequ
         new CreatePlatformStoreResponse(copy, adminUsername ?? "", adminPassword, copy.StoreId is not null));
 });
 
-platform.MapPost("/{id:guid}/payments", async (Guid id, RegisterPlatformPaymentRequest body, IPlatformStoreRepository repo, CancellationToken ct) =>
+platform.MapPost("/{id:guid}/payments", async (Guid id, RegisterPlatformPaymentRequest body, IPlatformStoreRepository repo, IConfiguration config, CancellationToken ct) =>
 {
+    if (body.Amount is < 0) return Results.BadRequest(new { error = "Valor do pagamento inválido." });
     var updated = await repo.RegisterPaymentAsync(id, body, ct);
-    return updated is null
-        ? Results.NotFound(new { error = "Loja não encontrada." })
-        : Results.Ok(updated);
+    if (updated is null) return Results.NotFound(new { error = "Loja não encontrada." });
+    await repo.EvaluateBillingAsync(DateTime.UtcNow, Catalog.Api.Services.BillingOptions.FromConfig(config), ct);
+    return Results.Ok(await repo.GetAsync(id, ct));
+});
+
+// Cobrança: mensalidade, cortesia/teste grátis e vencimento (painel da plataforma).
+platform.MapPatch("/{id:guid}/billing", async (Guid id, UpdatePlatformBillingRequest body, IPlatformStoreRepository repo, IConfiguration config, CancellationToken ct) =>
+{
+    if (body.MonthlyFee is < 0 or > 100_000) return Results.BadRequest(new { error = "Mensalidade inválida." });
+    if (body.PaymentNotes is { Length: > 500 }) return Results.BadRequest(new { error = "Observação muito longa (máx. 500 caracteres)." });
+    var updated = await repo.UpdateBillingAsync(id, body, ct);
+    if (updated is null) return Results.NotFound(new { error = "Loja não encontrada." });
+    await repo.EvaluateBillingAsync(DateTime.UtcNow, Catalog.Api.Services.BillingOptions.FromConfig(config), ct);
+    return Results.Ok(await repo.GetAsync(id, ct));
+});
+
+// Bloqueio/desbloqueio manual (o mesmo bloqueio usado pela inadimplência).
+platform.MapPost("/{id:guid}/block", async (Guid id, SetPlatformStoreBlockedRequest body, IPlatformStoreRepository repo, IConfiguration config, CancellationToken ct) =>
+{
+    var updated = await repo.SetBlockedAsync(id, body.Blocked, Catalog.Api.Services.BillingOptions.FromConfig(config), ct);
+    return updated is null ? Results.NotFound(new { error = "Loja não encontrada." }) : Results.Ok(updated);
+});
+
+// Reavalia a cobrança de todas as lojas agora (além da execução periódica).
+platform.MapPost("/billing/run", async (IPlatformStoreRepository repo, IConfiguration config, CancellationToken ct) =>
+{
+    var changed = await repo.EvaluateBillingAsync(DateTime.UtcNow, Catalog.Api.Services.BillingOptions.FromConfig(config), ct);
+    return Results.Ok(new { changed });
 });
 
 platform.MapPost("/{id:guid}/logo", async (Guid id, HttpRequest request, IPlatformStoreRepository repo, CancellationToken ct) =>

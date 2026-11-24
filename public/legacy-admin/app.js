@@ -1,9 +1,34 @@
 (function () {
   const API = (window.API_BASE_URL || 'http://localhost:5100').replace(/\/$/, '');
-  const TOKEN_KEY = 'delivery-admin-token';
-  const ROLE_KEY = 'delivery-admin-role';
-  const USER_KEY = 'delivery-admin-user';
-  const DEV_SESSION_KEY = 'delivery-admin-dev-session';
+  // Modo loja (/{slug}/admin): ?tenant={slug} identifica a loja administrada. Sem ele,
+  // o painel funciona como antes (/admin/legado, plataforma).
+  const TENANT = (() => {
+    try {
+      const raw = String(new URLSearchParams(location.search).get('tenant') || '').trim().toLowerCase();
+      return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(raw) ? raw : '';
+    } catch (_) { return ''; }
+  })();
+  // Sessões separadas por loja: /fabin/admin e /outra-loja/admin não compartilham token.
+  const SESSION_SUFFIX = TENANT ? `:${TENANT}` : '';
+  const TOKEN_KEY = 'delivery-admin-token' + SESSION_SUFFIX;
+  const ROLE_KEY = 'delivery-admin-role' + SESSION_SUFFIX;
+  const USER_KEY = 'delivery-admin-user' + SESSION_SUFFIX;
+  const DEV_SESSION_KEY = 'delivery-admin-dev-session' + SESSION_SUFFIX;
+
+  // Toda chamada à API leva a loja: resolve o tenant nas rotas públicas (/store, /catalog)
+  // e faz o backend recusar (403) um token de outra loja.
+  if (TENANT && typeof window.fetch === 'function') {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = function tenantFetch(input, init) {
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      if (!url.startsWith(API)) return nativeFetch(input, init);
+      const options = Object.assign({}, init);
+      const headers = new Headers(options.headers || (input instanceof Request ? input.headers : undefined));
+      if (!headers.has('X-Tenant-Slug')) headers.set('X-Tenant-Slug', TENANT);
+      options.headers = headers;
+      return nativeFetch(input, options);
+    };
+  }
   const DEV_PROFILES = {};
 
   let token = '';
@@ -355,6 +380,8 @@
     $('whatsapp').value = store.whatsapp || '';
     $('pixKey').value = store.pixKey || '';
     $('pixKeyLabel').value = store.pixKeyLabel || '';
+    // Lojas antigas: chave preenchida com rótulo vazio/"não configurada" ganham o tipo detectado.
+    if (/^(|chave pix não configurada)$/i.test(String(store.pixKeyLabel || '').trim())) autoFillPixKeyLabel();
     $('logoUrl').value = store.logoUrl || '';
     if ($('iconUrl')) $('iconUrl').value = store.iconUrl || '';
     updateStoreIconUi(store.iconUrl || '');
@@ -378,10 +405,14 @@
     $('storeLat').value = store.latitude != null ? store.latitude : '';
     $('storeLng').value = store.longitude != null ? store.longitude : '';
     storeConfig = store || storeConfig;
+    updateDocumentTitle();
     updateDineInUi();
     $('deliveryFeePerKm').value = store.deliveryFeePerKm != null ? store.deliveryFeePerKm : 0;
     $('minDeliveryFee').value = store.minDeliveryFee != null ? store.minDeliveryFee : 0;
     $('maxDeliveryKm').value = store.maxDeliveryKm != null ? store.maxDeliveryKm : 0;
+    fillWhatsAppTemplateForm(store);
+    fillHeroForm(store);
+    fillThemeForm(store);
     if ($('autoAdvancePreparing')) $('autoAdvancePreparing').checked = !!store.autoAdvancePreparing;
     if ($('autoAdvancePreparingMinutes')) {
       const minutes = Number(store.autoAdvancePreparingMinutes);
@@ -1094,7 +1125,8 @@
           priceMedia: p.priceMedia != null ? Number(p.priceMedia) : null,
           priceInteira: p.priceInteira != null ? Number(p.priceInteira) : null,
           modifierGroups: Array.isArray(p.modifierGroups) ? p.modifierGroups : [],
-          category: cat.title || cat.name || ''
+          category: cat.title || cat.name || '',
+          imageUrl: p.imageUrl || ''
         });
       });
     });
@@ -1114,46 +1146,6 @@
       console.warn('Catálogo para edição de itens', err);
     }
     return false;
-  }
-
-  /** Modal: tem todos os itens? Sim → confirma; Não → alterar itens. */
-  function askItemsAvailability(order) {
-    return new Promise((resolve) => {
-      const existing = $('itemsCheckModal');
-      if (existing) existing.remove();
-
-      const modal = document.createElement('div');
-      modal.id = 'itemsCheckModal';
-      modal.className = 'confirm-modal';
-      modal.innerHTML =
-        `<div class="confirm-modal-card items-check-card" role="dialog" aria-modal="true" aria-labelledby="itemsCheckTitle">` +
-        `<h3 id="itemsCheckTitle">Confirmar pedido</h3>` +
-        `<p class="muted">Pedido <strong>${escapeHtml(order.orderId)}</strong> — ${escapeHtml(order.customerName || '')}</p>` +
-        `<p class="items-check-highlight">Você tem todos os itens do pedido?</p>` +
-        `<div class="confirm-modal-actions">` +
-        `<button type="button" class="confirm" data-items-yes>Sim</button>` +
-        `<button type="button" class="ghost" data-items-no>Não</button>` +
-        `<button type="button" class="ghost compact" data-items-abort>Voltar</button>` +
-        `</div></div>`;
-      document.body.appendChild(modal);
-
-      const finish = (value) => {
-        document.removeEventListener('keydown', onKey);
-        modal.remove();
-        resolve(value);
-      };
-      const onKey = (e) => {
-        if (e.key === 'Escape') finish(null);
-      };
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) finish(null);
-      });
-      modal.querySelector('[data-items-abort]')?.addEventListener('click', () => finish(null));
-      modal.querySelector('[data-items-yes]')?.addEventListener('click', () => finish({ allItems: true }));
-      modal.querySelector('[data-items-no]')?.addEventListener('click', () => finish({ allItems: false }));
-      document.addEventListener('keydown', onKey);
-      modal.querySelector('[data-items-yes]')?.focus();
-    });
   }
 
   function askEditOrderItems(order, products) {
@@ -1635,9 +1627,34 @@
     return 'https://delivery-fabin.vercel.app';
   }
 
+  /**
+   * URL do cardápio com parâmetros (mesa, token, modo). Em modo loja aponta para o
+   * storefront desta plataforma com ?tenant= (a página /{slug} não repassa query).
+   */
+  function storeFrontUrl(query) {
+    if (TENANT) {
+      const base = `${location.origin}/storefront/index.html?tenant=${encodeURIComponent(TENANT)}`;
+      return query ? `${base}&${query}` : base;
+    }
+    return query ? `${storeFrontBaseUrl()}/?${query}` : `${storeFrontBaseUrl()}/`;
+  }
+
+  /** Título da aba com o nome da loja (o HTML traz um título genérico). */
+  function updateDocumentTitle() {
+    const name = String(storeConfig?.storeName || '').trim();
+    // Também é o título que o alerta de "Novo pedido!" restaura ao parar de piscar.
+    originalDocumentTitle = name ? `Painel — ${name}` : 'Painel da loja — WaDelivery';
+    document.title = originalDocumentTitle;
+  }
+
+  /** Link público do cardápio para clientes (QR de delivery). */
+  function storeFrontPublicUrl() {
+    return TENANT ? `${location.origin}/${TENANT}` : `${storeFrontBaseUrl()}/`;
+  }
+
   function storeFrontMenuUrl(tableId, jwtToken) {
     const q = `table=${encodeURIComponent(String(tableId))}&token=${encodeURIComponent(jwtToken)}`;
-    return `${storeFrontBaseUrl()}/?${q}`;
+    return storeFrontUrl(q);
   }
 
   // Abre o cardápio autenticado do storefront para registrar um pedido de
@@ -1656,7 +1673,7 @@
       return;
     }
     const q = `modo=${encodeURIComponent(channel)}&token=${encodeURIComponent(token)}`;
-    const url = `${storeFrontBaseUrl()}/?${q}`;
+    const url = storeFrontUrl(q);
     const win = window.open(url, '_blank', 'noopener');
     if (win) {
       try { win.opener = null; } catch (_) { /* ignore */ }
@@ -1670,7 +1687,7 @@
   function showDeliveryQrModal() {
     const existing = document.getElementById('deliveryQrModal');
     if (existing) existing.remove();
-    const url = `${storeFrontBaseUrl()}/`;
+    const url = storeFrontPublicUrl();
     const modal = document.createElement('div');
     modal.id = 'deliveryQrModal';
     modal.className = 'confirm-modal';
@@ -1814,7 +1831,7 @@
         const order = comandas.find((c) => c.orderId === action.orderId);
         if (order) {
           try {
-            await advanceOrderStatus(order, { skipConfirm: true });
+            await advanceOrderStatus(order);
           } catch (e) {
             showAppToast(e.message || 'Erro ao avançar a comanda.');
           }
@@ -1836,7 +1853,7 @@
   }
 
   // ── PIN gate (camada adicional ao JWT p/ ações dine-in sensíveis) ──
-  const PIN_SESSION_KEY = 'admin_pin_session';
+  const PIN_SESSION_KEY = 'admin_pin_session' + SESSION_SUFFIX;
   const PIN_SESSION_MS = 20 * 60 * 1000; // fallback client-side
 
   function loadPinSessionFromStorage() {
@@ -2850,7 +2867,7 @@
   }
 
   function tableStorefrontUrl(accessCode) {
-    return `${storeFrontBaseUrl()}/?table=${encodeURIComponent(accessCode)}`;
+    return storeFrontUrl(`table=${encodeURIComponent(accessCode)}`);
   }
 
   // Gera QR Code via API pública de QR (sem biblioteca adicional) — fallback para texto simples
@@ -3927,6 +3944,7 @@
       category: $('prodCategory')?.value || '',
       available: $('prodAvailable')?.checked,
       showInMenu: $('prodShowInMenu') ? $('prodShowInMenu').checked : true,
+      badge: $('prodBadge')?.value || '',
       ingredients: readSelectedIngredientIds().join(',')
     };
   }
@@ -3944,6 +3962,7 @@
       ($('prodCategory')?.value || '') !== productFormBaseline.category ||
       ($('prodAvailable')?.checked) !== productFormBaseline.available ||
       ($('prodShowInMenu') ? $('prodShowInMenu').checked : true) !== productFormBaseline.showInMenu ||
+      ($('prodBadge')?.value || '') !== productFormBaseline.badge ||
       readSelectedIngredientIds().join(',') !== productFormBaseline.ingredients
     );
   }
@@ -3967,6 +3986,7 @@
     clearPendingProductImage();
     if ($('prodAvailable')) $('prodAvailable').checked = true;
     if ($('prodShowInMenu')) $('prodShowInMenu').checked = true;
+    if ($('prodBadge')) $('prodBadge').value = '';
     if ($('saveProdBtn')) $('saveProdBtn').textContent = 'Salvar produto';
     if ($('prodFormMode')) $('prodFormMode').textContent = 'Novo produto';
     productOpcionais = [];
@@ -4818,7 +4838,7 @@
   }
 
   function printDashboardPdf(data) {
-    const storeName = storeConfig?.storeName || 'Fabin Lanches';
+    const storeName = storeConfig?.storeName || 'Minha loja';
     const title = `Dashboard — ${storeName} — ${data.periodLabel || ''}`;
     const tdHtml = (c) => {
       const s = String(c);
@@ -4948,6 +4968,43 @@
     updateAccountUi();
   }
 
+  let tenantInfoPromise = null;
+
+  /** Dados públicos da loja do modo loja ({ storeId, name }); null fora do modo loja. */
+  function loadTenantInfo() {
+    if (!TENANT) return Promise.resolve(null);
+    if (!tenantInfoPromise) {
+      tenantInfoPromise = fetch(`${API}/api/lojas/slug/${encodeURIComponent(TENANT)}`, { cache: 'no-store' })
+        .then((res) => {
+          if (!res.ok) throw new Error(res.status === 404 ? 'Loja não encontrada.' : `Falha ao carregar a loja (${res.status}).`);
+          return res.json();
+        })
+        .catch((err) => {
+          tenantInfoPromise = null;
+          throw err;
+        });
+    }
+    return tenantInfoPromise;
+  }
+
+  /**
+   * Em /{slug}/admin só entra quem pertence à loja: o token precisa ter store_id igual
+   * ao da loja da URL. Dev e usuários sem loja usam o painel da plataforma (/admin).
+   * Retorna mensagem de erro ou '' quando o acesso é permitido.
+   */
+  async function tenantAccessError(jwt) {
+    if (!TENANT) return '';
+    const tenantInfo = await loadTenantInfo();
+    const payload = decodeJwtPayload(jwt) || {};
+    const role = String(roleFromToken(jwt) || '').trim();
+    const storeId = Number(payload.store_id);
+    const storeName = (tenantInfo && tenantInfo.name) || TENANT;
+    if (/^dev$/i.test(role) || !Number.isFinite(storeId) || storeId <= 0 || storeId !== Number(tenantInfo && tenantInfo.storeId)) {
+      return `Este usuário não pertence à loja ${storeName}. Administradores da plataforma usam /admin.`;
+    }
+    return '';
+  }
+
   async function login() {
     $('loginError').hidden = true;
     const user = $('username').value.trim();
@@ -4974,8 +5031,15 @@
       }
       const data = await res.json();
       if (!data || !data.token) throw new Error('Token ausente');
+      const accessError = await tenantAccessError(data.token);
+      if (accessError) {
+        $('loginError').hidden = false;
+        $('loginError').textContent = accessError;
+        return;
+      }
       persistSession(data);
       showApp(true);
+      if (data.mustChangePassword) openChangePasswordModal({ forced: true, knownCurrent: pass });
       try {
         await refresh();
       } catch (refreshErr) {
@@ -5005,9 +5069,11 @@
     applyRoleUi();
 
     loadStoreConfigTablesFlags().catch(() => {});
+    loadBillingBanner().catch(() => {});
 
     const store = await api('/api/v1/store');
     storeConfig = store || storeConfig;
+    updateDocumentTitle();
     const topTitle = $('topbarStoreTitle');
     if (topTitle) topTitle.textContent = isPlatformDev()
       ? 'Plataforma'
@@ -5056,6 +5122,219 @@
     if (isPlatformDev() && activeTab === 'lojas') {
       await loadPlatformStores().catch(() => {});
     }
+    renderOnboardingChecklist();
+  }
+
+  // ── Senha do usuário: troca pelo menu da conta e troca obrigatória no primeiro acesso ──
+  /**
+   * forced: senha temporária/redefinida — não dá para fechar sem trocar (só sair).
+   * knownCurrent: senha que o usuário acabou de digitar no login (dispensa redigitar).
+   */
+  function openChangePasswordModal({ forced = false, knownCurrent = '' } = {}) {
+    const existing = $('changePasswordModal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'changePasswordModal';
+    modal.className = 'confirm-modal';
+    modal.innerHTML =
+      `<form class="confirm-modal-card password-modal-card" role="dialog" aria-modal="true" aria-labelledby="changePasswordTitle" novalidate>` +
+      `<h3 id="changePasswordTitle">${forced ? 'Defina sua nova senha' : 'Alterar senha'}</h3>` +
+      (forced
+        ? '<p class="muted">Você entrou com uma senha temporária. Para proteger sua loja, escolha uma senha pessoal antes de continuar.</p>'
+        : '') +
+      `<label ${knownCurrent ? 'hidden' : ''}>Senha atual<input type="password" name="current" autocomplete="current-password" /></label>` +
+      `<label>Nova senha<input type="password" name="next" autocomplete="new-password" minlength="6" /></label>` +
+      `<label>Confirme a nova senha<input type="password" name="confirm" autocomplete="new-password" minlength="6" /></label>` +
+      `<p class="muted password-hint">Mínimo de 6 caracteres. Use algo que só você saiba.</p>` +
+      `<p class="error" data-password-error hidden></p>` +
+      `<div class="confirm-modal-actions">` +
+      `<button type="submit" class="confirm">Salvar nova senha</button>` +
+      `<button type="button" class="ghost" data-password-cancel>${forced ? 'Sair' : 'Cancelar'}</button>` +
+      `</div></form>`;
+    document.body.appendChild(modal);
+    const form = modal.querySelector('form');
+    const errorEl = modal.querySelector('[data-password-error]');
+    const showError = (msg) => { errorEl.textContent = msg; errorEl.hidden = !msg; };
+    const close = () => modal.remove();
+    modal.querySelector('[data-password-cancel]').addEventListener('click', () => {
+      close();
+      if (forced) logout();
+    });
+    if (!forced) modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const current = knownCurrent || form.current.value;
+      const next = form.next.value;
+      if (!current) return showError('Informe a senha atual.');
+      if (next.length < 6) return showError('A nova senha precisa ter ao menos 6 caracteres.');
+      if (next !== form.confirm.value) return showError('A confirmação não confere com a nova senha.');
+      if (next === current) return showError('A nova senha deve ser diferente da atual.');
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      showError('');
+      try {
+        await api('/api/v1/auth/change-password', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ currentPassword: current, newPassword: next })
+        });
+        close();
+        showAppToast('Senha alterada com sucesso.');
+      } catch (err) {
+        showError(err.message || 'Não foi possível alterar a senha.');
+        btn.disabled = false;
+      }
+    });
+    (knownCurrent ? form.next : form.current).focus();
+  }
+
+  // ── Aviso de mensalidade (painel do lojista) ──
+  // Fonte: GET /api/v1/admin/billing (loja do token). A plataforma não vê o aviso.
+  function formatBillingDate(value) {
+    if (!value) return '';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  }
+
+  function billingBannerContent(b) {
+    if (!b || !b.tracked) return null;
+    const fee = Number(b.monthlyFee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (b.billingBlocked) {
+      return { tone: 'error', title: 'Loja bloqueada por mensalidade em atraso',
+        text: 'O cardápio está fora do ar e novos pedidos estão suspensos. Regularize o pagamento com a plataforma para reativar a loja.' };
+    }
+    if (b.active === false) {
+      return { tone: 'error', title: 'Loja desativada pela plataforma',
+        text: 'O cardápio está fora do ar e novos pedidos estão suspensos. Fale com a plataforma.' };
+    }
+    if (b.courtesy) {
+      if (!b.courtesyUntil) return null;
+      const left = Math.round((Date.parse(b.courtesyUntil) - Date.now()) / 86400000);
+      if (left > 7) return null;
+      return { tone: 'info', title: 'Teste grátis terminando',
+        text: `Seu período grátis termina em ${formatBillingDate(b.courtesyUntil)}.` +
+          (Number(b.monthlyFee) > 0 ? ` Depois, a mensalidade é de ${fee}.` : '') };
+    }
+    if (Number(b.daysOverdue) > 0) {
+      const blockAt = formatBillingDate(b.blockAt);
+      return { tone: 'warn', title: `Mensalidade vencida há ${b.daysOverdue} dia(s)`,
+        text: `A mensalidade de ${fee} venceu em ${formatBillingDate(b.nextDueAt)}.` +
+          (blockAt ? ` Sem o pagamento, a loja será bloqueada em ${blockAt}.` : '') };
+    }
+    if (b.daysUntilDue !== null && b.daysUntilDue !== undefined && Number(b.daysUntilDue) <= 5) {
+      const when = Number(b.daysUntilDue) === 0 ? 'vence hoje' : `vence em ${b.daysUntilDue} dia(s)`;
+      return { tone: 'info', title: `Mensalidade ${when}`,
+        text: `Valor: ${fee} · vencimento ${formatBillingDate(b.nextDueAt)}.` };
+    }
+    return null;
+  }
+
+  async function loadBillingBanner() {
+    const box = $('billingBanner');
+    if (!box) return;
+    if (!isStoreAdmin() || isPlatformDev()) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    let content = null;
+    try {
+      // fetch direto (não api()): o aviso é opcional e nunca deve encerrar a sessão.
+      const res = await fetch(`${API}/api/v1/admin/billing`, { headers: authHeaders() });
+      content = res.ok ? billingBannerContent(await res.json()) : null;
+    } catch {
+      content = null;
+    }
+    if (!content) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    box.className = `billing-banner is-${content.tone}`;
+    box.innerHTML = `<strong>${escapeHtml(content.title)}</strong><span>${escapeHtml(content.text)}</span>`;
+    box.hidden = false;
+  }
+
+  // ── Checklist "Complete sua loja" (onboarding do lojista) ──
+  const ONBOARDING_HOURS_KEY = `wa-onboarding-hours${SESSION_SUFFIX}`;
+  const ONBOARDING_HIDDEN_KEY = `wa-onboarding-hidden${SESSION_SUFFIX}`;
+  const ONBOARDING_MIN_PHOTOS = 3;
+
+  function storageFlag(key, value) {
+    try {
+      if (value === undefined) return localStorage.getItem(key) === '1';
+      if (value) localStorage.setItem(key, '1'); else localStorage.removeItem(key);
+    } catch (_) { /* sem storage: só nesta sessão */ }
+    return !!value;
+  }
+
+  function onboardingItems() {
+    const store = storeConfig || {};
+    const products = flattenCatalogProducts();
+    // Produtos de exemplo do cadastro (foto 'exemplo-…') e logo padrão ('logo-padrao-…') não contam.
+    const isSample = (p) => /^produto de exemplo$/i.test(String(p.name || '').trim()) || /\/exemplo-[^/]*$/i.test(String(p.imageUrl || ''));
+    const ownProducts = products.filter((p) => !isSample(p));
+    const withPhoto = ownProducts.filter((p) => String(p.imageUrl || '').trim()).length;
+    const logoUrl = String(store.logoUrl || '').trim();
+    return [
+      { id: 'logo', label: 'Envie o logo da loja', done: !!logoUrl && !/\/logo-padrao-[^/]*$/i.test(logoUrl), action: () => openStoreSubTab('geral') },
+      { id: 'pix', label: 'Cadastre a chave Pix', done: !!String(store.pixKey || '').trim(), action: () => openStoreSubTab('geral') },
+      { id: 'map', label: 'Localize o endereço no mapa', done: store.latitude != null && store.longitude != null, action: () => openStoreSubTab('endereco') },
+      { id: 'delivery', label: 'Configure a taxa de entrega', done: Number(store.deliveryFeePerKm) > 0 || Number(store.minDeliveryFee) > 0, action: () => openStoreSubTab('endereco') },
+      { id: 'hours', label: 'Revise o horário de funcionamento', done: storageFlag(ONBOARDING_HOURS_KEY), action: () => openStoreSubTab('funcionamento'), confirmLabel: 'Já revisei' },
+      { id: 'example', label: 'Cadastre seus produtos (os de exemplo podem ser editados ou removidos)', done: ownProducts.length > 0, action: () => openTab('products') },
+      { id: 'photos', label: `Cadastre produtos com foto (${Math.min(withPhoto, ONBOARDING_MIN_PHOTOS)} de ${ONBOARDING_MIN_PHOTOS})`, done: withPhoto >= ONBOARDING_MIN_PHOTOS, action: () => openTab('products') }
+    ];
+  }
+
+  function openStoreSubTab(name) {
+    openTab('store');
+    applyStoreTab(name);
+  }
+
+  /** Só para o administrador da loja; some quando tudo estiver feito ou se ele ocultar. */
+  function renderOnboardingChecklist() {
+    const box = $('onboardingChecklist');
+    if (!box) return;
+    const items = isStoreAdmin() && !isPlatformDev() ? onboardingItems() : [];
+    const pending = items.filter((i) => !i.done);
+    if (!items.length || !pending.length || storageFlag(ONBOARDING_HIDDEN_KEY)) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    const doneCount = items.length - pending.length;
+    box.innerHTML =
+      `<div class="onboarding-head"><div><h3>Complete sua loja</h3>` +
+      `<p class="muted">${doneCount} de ${items.length} concluídos — lojas completas vendem mais e passam confiança.</p></div>` +
+      `<button type="button" class="ghost compact" data-onboarding-hide>Ocultar</button></div>` +
+      `<div class="onboarding-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${items.length}" aria-valuenow="${doneCount}">` +
+      `<span style="width:${Math.round((doneCount / items.length) * 100)}%"></span></div>` +
+      `<ul class="onboarding-list">` +
+      items.map((item) =>
+        `<li class="${item.done ? 'is-done' : ''}">` +
+        `<span class="onboarding-check" aria-hidden="true">${item.done ? '✓' : ''}</span>` +
+        `<span class="onboarding-label">${escapeHtml(item.label)}</span>` +
+        (item.done ? '' :
+          `<span class="onboarding-actions"><button type="button" class="ghost compact" data-onboarding-go="${item.id}">Resolver</button>` +
+          (item.confirmLabel ? `<button type="button" class="ghost compact" data-onboarding-confirm="${item.id}">${escapeHtml(item.confirmLabel)}</button>` : '') +
+          `</span>`) +
+        `</li>`).join('') +
+      `</ul>`;
+    box.hidden = false;
+    box.querySelector('[data-onboarding-hide]')?.addEventListener('click', () => {
+      storageFlag(ONBOARDING_HIDDEN_KEY, true);
+      renderOnboardingChecklist();
+    });
+    box.querySelectorAll('[data-onboarding-go]').forEach((btn) => {
+      btn.addEventListener('click', () => items.find((i) => i.id === btn.dataset.onboardingGo)?.action());
+    });
+    box.querySelectorAll('[data-onboarding-confirm]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.onboardingConfirm === 'hours') storageFlag(ONBOARDING_HOURS_KEY, true);
+        renderOnboardingChecklist();
+      });
+    });
   }
 
   // ── Equipe / Garçons (Admin de loja) ──
@@ -5703,6 +5982,7 @@
     userRole = localStorage.getItem(ROLE_KEY) || roleFromToken(saved) || '';
     username = localStorage.getItem(USER_KEY) || '';
     try {
+      if (await tenantAccessError(saved)) throw new Error('Sessão de outra loja');
       const me = await api('/api/v1/auth/me', { headers: authHeaders() });
       username = me.username || username;
       userRole = me.role || userRole || roleFromToken(token) || 'Atendimento';
@@ -5710,6 +5990,7 @@
       localStorage.setItem(USER_KEY, username);
       showApp(true);
       updateAccountUi();
+      if (me.mustChangePassword) openChangePasswordModal({ forced: true });
       await refresh();
     } catch (_) {
       logout();
@@ -5937,7 +6218,7 @@
   function readPlatformStoreForm() {
     return {
       name: $('platformName').value.trim(),
-      cnpj: onlyDigits($('platformCnpj').value),
+      cnpj: normalizeDocument($('platformCnpj').value),
       razaoSocial: $('platformRazaoSocial').value.trim(),
       plan: $('platformPlan').value,
       segment: readPlatformSegmento(),
@@ -6094,8 +6375,12 @@
     return map[String(status || '').toLowerCase()] || status || '—';
   }
 
+  function normalizeDocument(value) {
+    return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 14);
+  }
+
   function formatCnpj(value) {
-    const d = onlyDigits(value).slice(0, 14);
+    const d = normalizeDocument(value);
     if (d.length <= 2) return d;
     if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
     if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
@@ -6451,7 +6736,7 @@
     const payload = readPlatformStoreForm();
     if (!payload.name) throw new Error('Informe o nome da loja.');
     if (payload.monthlyFee < 0) throw new Error('Mensalidade não pode ser negativa.');
-    if (payload.cnpj && onlyDigits(payload.cnpj).length !== 14) throw new Error('CNPJ inválido (use 14 dígitos).');
+    if (payload.cnpj && !/^[A-Z0-9]{12}[0-9]{2}$/.test(payload.cnpj)) throw new Error('CNPJ inválido. Use 14 caracteres; para CNPJ alfanumérico, os 2 últimos devem ser dígitos.');
     if (payload.cep && onlyDigits(payload.cep).length !== 8) throw new Error('CEP inválido (use 8 dígitos).');
     if (payload.state && !/^[a-zA-Z]{2}$/.test(payload.state)) throw new Error('UF inválida (use 2 letras).');
     if (payload.frontUrl && !isHttpUrl(payload.frontUrl)) throw new Error('URL do front deve começar com http:// ou https://');
@@ -8513,7 +8798,7 @@
           minute: '2-digit'
         }).replace(',', ' às') + 'hs'
       : '—';
-    const storeName = storeConfig?.storeName || 'Fabin Lanches';
+    const storeName = storeConfig?.storeName || 'Minha loja';
     const items = Array.isArray(order.items) ? order.items : [];
     const itemsTotal = Number(order.itemsTotal || 0);
     const deliveryFee = orderDeliveryFee(order);
@@ -8662,7 +8947,7 @@
           minute: '2-digit'
         }).replace(',', ' às') + 'hs'
       : '—';
-    const storeName = storeConfig?.storeName || 'Fabin Lanches';
+    const storeName = storeConfig?.storeName || 'Minha loja';
     const items = Array.isArray(order.items) ? order.items : [];
     const itemsTotal = Number(order.itemsTotal || 0);
     const deliveryFee = orderDeliveryFee(order);
@@ -9214,7 +9499,7 @@
     const btn = $('receiptTestPrintBtn');
     if (btn) btn.disabled = true;
     setReceiptTestStatus('Enviando teste de impressão…');
-    const testLines = ['FABIN - Teste de comunicacao', 'Se imprimiu, esta funcionando.'];
+    const testLines = ['TESTE DE COMUNICACAO', 'Se imprimiu, esta funcionando.'];
     try {
       if (mode === 'serial') {
         const res = await acquireReceiptTestSerialPort();
@@ -9267,7 +9552,7 @@
   function printReceiptViaWindowsTest() {
     const mm = getReceiptWidthMm();
     const content = [
-      'FABIN - IMPRESSAO VIA WINDOWS',
+      'TESTE - IMPRESSAO VIA WINDOWS',
       '',
       'Se esta impressora apareceu no',
       'dialogo e imprimiu, a configuracao',
@@ -9942,7 +10227,7 @@
     autoPrintMesaOnConfirmCheck(updated);
   }
 
-  async function advanceOrderStatus(order, { skipConfirm } = {}) {
+  async function advanceOrderStatus(order) {
     if (!order.nextStatus) return;
     // Pedido de mesa não bloqueia por pagamento: o pagamento se resolve no fechamento da mesa.
     if (order.nextStatus === 'Delivered' && isPaymentBlockingDelivery(order) && !isDineInOrder(order)) {
@@ -9951,18 +10236,7 @@
     // PIN gate: finalização (Delivered) de pedido de mesa
     if (isDineInOrder(order) && order.nextStatus === 'Delivered' && !(await requirePinSession())) return;
     const fromStatus = order.status;
-
-    if (fromStatus === 'Created') {
-      if (!skipConfirm) {
-        const itemsCheck = await askItemsAvailability(order);
-        if (!itemsCheck) return;
-        if (!itemsCheck.allItems) {
-          await editOrderItems(order);
-          return;
-        }
-      }
-    }
-
+    // Confirmação direta: para ajustar itens antes, use o botão "Alterar itens" do card.
     const toStatus = order.nextStatus;
 
     const updated = await api(`/api/v1/orders/${encodeURIComponent(order.orderId)}/status`, {
@@ -10031,7 +10305,7 @@
 
   async function confirmFirstWaitingOrder() {
     if (!canSeeOrders() || activeTab !== 'orders') return;
-    if ($('appConfirmModal') || $('itemsCheckModal') || $('editOrderItemsModal') || ($('receiptModal') && !$('receiptModal').hidden)) return;
+    if ($('appConfirmModal') || $('editOrderItemsModal') || ($('receiptModal') && !$('receiptModal').hidden)) return;
     if ($('paymentMethodModal') || ($('categoryModal') && !$('categoryModal').hidden)) return;
     if (($('productModal') && !$('productModal').hidden) || ($('ingredientModal') && !$('ingredientModal').hidden)) return;
     const waiting = ordersForFilter('Created');
@@ -10175,6 +10449,7 @@
     updateProductImageUi(p.imageUrl || '');
     $('prodAvailable').checked = p.available !== false;
     if ($('prodShowInMenu')) $('prodShowInMenu').checked = p.showInMenu !== false;
+    if ($('prodBadge')) $('prodBadge').value = p.badge || '';
     const selectedIds = (p.ingredients || []).map((i) => i.id).filter(Boolean);
     productOpcionais = flattenModifierGroups(p.modifierGroups || []);
     productPrincipalIds = (p.ingredients || [])
@@ -11284,6 +11559,24 @@
       waiterSessionHours: $('waiterSessionHours') && $('waiterSessionHours').value !== '' ? Math.max(1, Math.min(24, Number($('waiterSessionHours').value) || 8)) : null,
       schedule: readScheduleFromForm()
     };
+    // Texto vazio ou igual ao padrão: a API passa a usar a mensagem padrão.
+    if ($('whatsAppOrderTemplate')) {
+      payload.whatsAppOrderTemplate = $('whatsAppOrderTemplate').value;
+    }
+    // Aparência (modelo de card + cores) escolhida na aba Aparência.
+    // A Fabin mantém o visual original do cardápio: não altera esses campos dela.
+    if (themeDraft && currentStoreSlug() !== 'fabin') {
+      Object.assign(payload, themeDraft);
+    }
+    // Destaque no topo: opcional para todas as lojas (desligado por padrão).
+    if (heroDraft) {
+      Object.assign(payload, {
+        heroEnabled: heroDraft.heroEnabled,
+        heroProductId: heroDraft.heroProductId || '',
+        heroTitle: heroDraft.heroTitle || '',
+        heroSubtitle: heroDraft.heroSubtitle || ''
+      });
+    }
 
     const saved = await api('/api/v1/admin/store', {
       method: 'PATCH',
@@ -11559,6 +11852,7 @@
         priceInteira,
         available: $('prodAvailable').checked,
         showInMenu: $('prodShowInMenu') ? $('prodShowInMenu').checked : true,
+        badge: $('prodBadge') ? $('prodBadge').value : null,
         imageUrl,
         ingredientIds,
         principalIngredientIds: readProductPrincipalIds(),
@@ -11580,7 +11874,354 @@
   });
 
   const STORE_TAB_KEY = 'adminStoreTab';
-  const STORE_TAB_ORDER = ['geral', 'funcionamento', 'endereco', 'impressao', 'painel'];
+  const STORE_TAB_ORDER = ['geral', 'aparencia', 'funcionamento', 'endereco', 'whatsapp', 'impressao', 'painel'];
+
+  // ── Loja → Aparência (modelo de card + cores, com prévia ao vivo) ─────
+  const CARD_MODELS = ['moderno', 'foto-grande', 'vitrine', 'lista-horizontal', 'minimalista', 'destaque', 'compacto'];
+  const SEGMENT_LABELS = { lanchonete: 'Lanchonete', hamburgueria: 'Hamburgueria', pizzaria: 'Pizzaria', marmitaria: 'Marmitaria', assai: 'Açaí' };
+  let segmentPalettesPromise = null;
+
+  /** Paletas por segmento definidas na API (fonte única: SegmentPalettes.cs). */
+  function loadSegmentPalettes() {
+    if (!segmentPalettesPromise) {
+      segmentPalettesPromise = fetch(`${API}/api/v1/segment-palettes`, { cache: 'no-store' })
+        .then((res) => { if (!res.ok) throw new Error('Paletas indisponíveis.'); return res.json(); })
+        .catch((err) => { segmentPalettesPromise = null; throw err; });
+    }
+    return segmentPalettesPromise;
+  }
+
+  /** Segmento da loja (cadastro da plataforma), via resolução pública do slug. */
+  async function loadStoreSegment() {
+    const slug = currentStoreSlug();
+    if (!slug) return '';
+    const res = await fetch(`${API}/api/lojas/slug/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    if (!res.ok) return '';
+    const data = await res.json();
+    return String(data?.segment || '').trim().toLowerCase();
+  }
+
+  async function applySegmentPalette() {
+    const [palettes, segment] = await Promise.all([loadSegmentPalettes(), loadStoreSegment()]);
+    const palette = (palettes.segments || []).find((p) => p.segment === segment) || palettes.defaultPalette;
+    if (!palette) return;
+    updateThemeDraft({
+      corPrimaria: palette.corPrimaria,
+      corSecundaria: palette.corSecundaria,
+      corFundo: palette.corFundo,
+      corTexto: palette.corTexto
+    });
+    showAppToast(`Cores do segmento ${SEGMENT_LABELS[segment] || 'padrão'} aplicadas na prévia. Clique em Salvar para publicar.`);
+  }
+
+  async function updateSegmentInfo() {
+    const info = $('themeSegmentInfo');
+    if (!info) return;
+    try {
+      const segment = await loadStoreSegment();
+      info.textContent = segment
+        ? `Segmento da loja: ${SEGMENT_LABELS[segment] || segment}`
+        : 'Loja sem segmento cadastrado: será usada a paleta padrão.';
+    } catch (_) {
+      info.textContent = '';
+    }
+  }
+  const THEME_COLOR_INPUTS = {
+    corPrimaria: 'themeCorPrimaria',
+    corSecundaria: 'themeCorSecundaria',
+    corFundo: 'themeCorFundo',
+    corTexto: 'themeCorTexto'
+  };
+  const THEME_DEFAULTS = { tipoCard: 'foto-grande', corPrimaria: '#1f6feb', corSecundaria: '#ffffff', corFundo: '#f3f4f6', corTexto: '#2c3e50' };
+  let themeDraft = null;
+  let themePreviewSlug = '';
+
+  /** Slug do cardápio desta loja (modo loja ou loja carregada no painel). */
+  function currentStoreSlug() {
+    return TENANT || String(storeConfig?.slug || '').trim().toLowerCase();
+  }
+
+  function isHex(value) {
+    return /^#[0-9a-fA-F]{6}$/.test(String(value || ''));
+  }
+
+  function renderThemeForm() {
+    if (!themeDraft) return;
+    document.querySelectorAll('#cardModelGrid [data-card-model]').forEach((btn) => {
+      btn.setAttribute('aria-checked', String(btn.dataset.cardModel === themeDraft.tipoCard));
+    });
+    Object.entries(THEME_COLOR_INPUTS).forEach(([field, id]) => {
+      const input = $(id);
+      if (!input) return;
+      input.value = themeDraft[field];
+      const code = input.parentElement?.querySelector('code');
+      if (code) code.textContent = themeDraft[field];
+    });
+  }
+
+  function sendThemeToPreview() {
+    const frame = $('themePreviewFrame');
+    if (!frame?.contentWindow || !themeDraft) return;
+    try {
+      frame.contentWindow.postMessage({ type: 'wa-theme-preview', theme: { ...themeDraft, ...(heroDraft || {}) } }, location.origin);
+    } catch (_) { /* prévia indisponível */ }
+  }
+
+  // ── Destaque no topo (mesma aba) ──
+  let heroDraft = null;
+
+  function populateHeroProductOptions() {
+    const select = $('heroProductId');
+    if (!select) return;
+    const current = heroDraft?.heroProductId || select.value;
+    const products = flattenCatalogProducts();
+    select.innerHTML = '<option value="">Sem produto (só texto)</option>' +
+      products.map((p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} — ${money(p.price)}</option>`).join('');
+    select.value = products.some((p) => p.id === current) ? current : '';
+  }
+
+  function renderHeroForm() {
+    if (!heroDraft) return;
+    if ($('heroEnabled')) $('heroEnabled').checked = heroDraft.heroEnabled;
+    if ($('heroTitle')) $('heroTitle').value = heroDraft.heroTitle;
+    if ($('heroSubtitle')) $('heroSubtitle').value = heroDraft.heroSubtitle;
+    if ($('heroFields')) $('heroFields').hidden = !heroDraft.heroEnabled;
+    populateHeroProductOptions();
+  }
+
+  function fillHeroForm(store) {
+    heroDraft = {
+      heroEnabled: store?.heroEnabled === true,
+      heroProductId: store?.heroProductId || '',
+      heroTitle: store?.heroTitle || '',
+      heroSubtitle: store?.heroSubtitle || ''
+    };
+    renderHeroForm();
+  }
+
+  function updateHeroDraft(changes) {
+    if (!heroDraft) heroDraft = { heroEnabled: false, heroProductId: '', heroTitle: '', heroSubtitle: '' };
+    Object.assign(heroDraft, changes);
+    if ($('heroFields')) $('heroFields').hidden = !heroDraft.heroEnabled;
+    sendThemeToPreview();
+  }
+
+  (function wireHeroEditor() {
+    $('heroEnabled')?.addEventListener('change', (e) => updateHeroDraft({ heroEnabled: e.target.checked }));
+    $('heroProductId')?.addEventListener('change', (e) => updateHeroDraft({ heroProductId: e.target.value }));
+    $('heroTitle')?.addEventListener('input', (e) => updateHeroDraft({ heroTitle: e.target.value }));
+    $('heroSubtitle')?.addEventListener('input', (e) => updateHeroDraft({ heroSubtitle: e.target.value }));
+  })();
+
+  function ensureThemePreview() {
+    const frame = $('themePreviewFrame');
+    const slug = currentStoreSlug();
+    if (!frame || !slug || slug === themePreviewSlug) return;
+    themePreviewSlug = slug;
+    updateSegmentInfo();
+    frame.src = `${location.origin}/storefront/index.html?tenant=${encodeURIComponent(slug)}&preview=1`;
+  }
+
+  function fillThemeForm(store) {
+    themeDraft = {
+      tipoCard: CARD_MODELS.includes(store?.tipoCard) ? store.tipoCard : THEME_DEFAULTS.tipoCard,
+      corPrimaria: isHex(store?.corPrimaria) ? store.corPrimaria : THEME_DEFAULTS.corPrimaria,
+      corSecundaria: isHex(store?.corSecundaria) ? store.corSecundaria : THEME_DEFAULTS.corSecundaria,
+      corFundo: isHex(store?.corFundo) ? store.corFundo : THEME_DEFAULTS.corFundo,
+      corTexto: isHex(store?.corTexto) ? store.corTexto : THEME_DEFAULTS.corTexto
+    };
+    const note = $('themeFabinNote');
+    if (note) note.hidden = currentStoreSlug() !== 'fabin';
+    renderThemeForm();
+    if (!$('tab-store')?.hidden && localStorage.getItem(STORE_TAB_KEY) === 'aparencia') ensureThemePreview();
+    sendThemeToPreview();
+  }
+
+  function updateThemeDraft(changes) {
+    if (!themeDraft) themeDraft = { ...THEME_DEFAULTS };
+    Object.assign(themeDraft, changes);
+    renderThemeForm();
+    sendThemeToPreview();
+  }
+
+  (function wireThemeEditor() {
+    $('cardModelGrid')?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-card-model]');
+      if (btn) updateThemeDraft({ tipoCard: btn.dataset.cardModel });
+    });
+    $('themeSegmentBtn')?.addEventListener('click', () => {
+      applySegmentPalette().catch((e) => showAppToast(e.message || 'Não foi possível carregar as cores do segmento.'));
+    });
+    $('themePalettes')?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-palette]');
+      if (!btn) return;
+      const [corPrimaria, corSecundaria, corFundo, corTexto] = btn.dataset.palette.split(',');
+      updateThemeDraft({ corPrimaria, corSecundaria, corFundo, corTexto });
+    });
+    Object.entries(THEME_COLOR_INPUTS).forEach(([field, id]) => {
+      $(id)?.addEventListener('input', (event) => updateThemeDraft({ [field]: event.target.value }));
+    });
+    // O cardápio da prévia avisa quando carregou; então recebe o rascunho atual.
+    window.addEventListener('message', (event) => {
+      if (event.origin !== location.origin || event.data?.type !== 'wa-theme-preview-ready') return;
+      if (event.source === $('themePreviewFrame')?.contentWindow) sendThemeToPreview();
+    });
+  })();
+
+  // ── Loja → Mensagem WhatsApp ──────────────────────────────────────────
+  // Mesmo algoritmo do cardápio (renderWhatsAppTemplate em apps/storefront).
+  const WA_TEMPLATE_PATTERN = /\{([a-z_]+)\}/g;
+  const WA_SAMPLE_VARS = {
+    loja: '',
+    pedido: 'FL-1A2B3C4D5E6F',
+    recebimento: 'Entrega',
+    itens: '1x X-Tudo — R$ 30,00\n   Adic. Bacon: R$ 4,00\n2x Coca-Cola lata — R$ 12,00',
+    subtotal: 'R$ 46,00',
+    taxa_entrega: 'R$ 7,50 (2.4 km)',
+    total: 'R$ 53,50',
+    pagamento: 'Dinheiro\nTroco para: R$ 100,00',
+    observacoes: 'Sem cebola, por favor',
+    endereco_entrega: '🛵 Entrega (Casa):\nRua das Flores, 123 - Centro\n🏷 Tipo: Casa\n📍 Complemento/instruções: Portão azul',
+    cliente: 'Maria Silva',
+    telefone: '(11) 98765-4321'
+  };
+
+  function renderWaTemplate(template, vars) {
+    return String(template || '')
+      .replace(/\r\n?/g, '\n')
+      .split('\n')
+      .filter((line) => {
+        const names = [...line.matchAll(WA_TEMPLATE_PATTERN)].map((m) => m[1]).filter((n) => n in vars);
+        return names.length === 0 || names.some((n) => String(vars[n] ?? '').trim() !== '');
+      })
+      .map((line) => line.replace(WA_TEMPLATE_PATTERN, (whole, name) => (name in vars ? String(vars[name] ?? '') : whole)))
+      .join('\n')
+      .trim();
+  }
+
+  function updateWaTemplatePreview() {
+    const area = $('whatsAppOrderTemplate');
+    const preview = $('waTemplatePreview');
+    if (!area || !preview) return;
+    const vars = Object.assign({}, WA_SAMPLE_VARS, { loja: storeConfig?.storeName || 'Minha loja' });
+    const text = renderWaTemplate(area.value, vars);
+    // *texto* aparece em negrito no WhatsApp.
+    const html = escapeHtml(text).replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>');
+    preview.innerHTML = text
+      ? `<div class="wa-preview-bubble">${html}</div>`
+      : '<p class="muted">Texto vazio: será usada a mensagem padrão.</p>';
+  }
+
+  function setWaTemplateStatus(customized) {
+    const el = $('waTemplateStatus');
+    if (!el) return;
+    el.textContent = customized ? 'Mensagem personalizada' : 'Usando a mensagem padrão';
+    el.classList.toggle('is-custom', !!customized);
+  }
+
+  function fillWhatsAppTemplateForm(store) {
+    const area = $('whatsAppOrderTemplate');
+    if (!area) return;
+    area.value = typeof store?.whatsAppOrderTemplate === 'string' ? store.whatsAppOrderTemplate : '';
+    setWaTemplateStatus(!!store?.whatsAppOrderTemplateCustomized);
+    updateWaTemplatePreview();
+  }
+
+  function insertWaTemplateVar(name) {
+    const area = $('whatsAppOrderTemplate');
+    if (!area) return;
+    const token = `{${name}}`;
+    const start = area.selectionStart ?? area.value.length;
+    const end = area.selectionEnd ?? start;
+    area.value = area.value.slice(0, start) + token + area.value.slice(end);
+    area.focus();
+    area.selectionStart = area.selectionEnd = start + token.length;
+    updateWaTemplatePreview();
+  }
+
+  async function resetWaTemplateToDefault() {
+    const data = await api('/api/v1/admin/whatsapp-order-template/default', { headers: authHeaders() });
+    const area = $('whatsAppOrderTemplate');
+    if (!area || !data || typeof data.template !== 'string') return;
+    area.value = data.template;
+    updateWaTemplatePreview();
+    showAppToast('Mensagem padrão restaurada no editor. Clique em Salvar para aplicar.');
+  }
+
+  // ── Loja → Geral: Label Pix automático a partir da chave ──────────────
+  // Rótulos que podem ser sobrescritos pela detecção (os demais foram escritos à mão).
+  // Inclui os nomes antigos (Telefone/Aleatória) para que lojas existentes migrem ao editar a chave.
+  const PIX_AUTO_LABELS = ['', 'celular', 'telefone', 'cpf', 'cnpj', 'e-mail', 'email', 'chave aleatória', 'aleatória', 'chave pix não configurada'];
+
+  function isValidCpfDigits(digits) {
+    if (!/^\d{11}$/.test(digits) || /^(\d)\1{10}$/.test(digits)) return false;
+    const calc = (src, weights) => {
+      const rem = weights.reduce((sum, w, i) => sum + Number(src[i]) * w, 0) % 11;
+      return rem < 2 ? 0 : 11 - rem;
+    };
+    const d1 = calc(digits.slice(0, 9), [10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const d2 = calc(digits.slice(0, 9) + d1, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return Number(digits[9]) === d1 && Number(digits[10]) === d2;
+  }
+
+  /** CNPJ numérico ou alfanumérico (14 caracteres; dígitos verificadores numéricos). */
+  function isValidCnpjValue(value) {
+    const clean = normalizeDocument(value);
+    if (clean.length !== 14 || /^(.)\1{13}$/.test(clean) || !/^[A-Z0-9]{12}\d{2}$/.test(clean)) return false;
+    const val = (c) => c.charCodeAt(0) - 48;
+    const calc = (src, weights) => {
+      const rem = weights.reduce((sum, w, i) => sum + val(src[i]) * w, 0) % 11;
+      return rem < 2 ? 0 : 11 - rem;
+    };
+    const d1 = calc(clean.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const d2 = calc(clean.slice(0, 12) + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return val(clean[12]) === d1 && val(clean[13]) === d2;
+  }
+
+  /** Tipo da chave Pix pelo formato, com os nomes oficiais do Pix; '' quando não dá para identificar. */
+  function detectPixKeyType(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return 'E-mail';
+    if (/^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(raw)) return 'Chave aleatória';
+    if (/^\+/.test(raw) || /\(\d{2}\)/.test(raw)) return 'Celular';
+    if (/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(raw)) return isValidCpfDigits(onlyDigits(raw)) ? 'CPF' : '';
+    if (/[./]/.test(raw) && isValidCnpjValue(raw)) return 'CNPJ';
+    const digits = onlyDigits(raw);
+    if (/^[\d\s().-]+$/.test(raw)) {
+      if (digits.length === 14 && isValidCnpjValue(digits)) return 'CNPJ';
+      if (digits.length === 11 && isValidCpfDigits(digits)) return 'CPF';
+      if (digits.length >= 10 && digits.length <= 13) return 'Celular';
+    }
+    if (isValidCnpjValue(raw)) return 'CNPJ';
+    return '';
+  }
+
+  function autoFillPixKeyLabel() {
+    const keyEl = $('pixKey');
+    const labelEl = $('pixKeyLabel');
+    if (!keyEl || !labelEl) return;
+    const current = String(labelEl.value || '').trim().toLowerCase();
+    if (!PIX_AUTO_LABELS.includes(current)) return; // rótulo personalizado: não sobrescreve
+    const type = detectPixKeyType(keyEl.value);
+    if (type) labelEl.value = type;
+    else if (!String(keyEl.value || '').trim()) labelEl.value = '';
+  }
+
+  (function wirePixKeyLabel() {
+    $('pixKey')?.addEventListener('input', autoFillPixKeyLabel);
+  })();
+
+  (function wireWaTemplateEditor() {
+    $('whatsAppOrderTemplate')?.addEventListener('input', updateWaTemplatePreview);
+    $('waVarList')?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-wa-var]');
+      if (btn) insertWaTemplateVar(btn.dataset.waVar);
+    });
+    $('waTemplateResetBtn')?.addEventListener('click', () => {
+      resetWaTemplateToDefault().catch((e) => showAppToast(e.message || 'Não foi possível carregar a mensagem padrão.'));
+    });
+  })();
   function applyStoreTab(tabName) {
     const valid = STORE_TAB_ORDER.includes(tabName) ? tabName : 'geral';
     document.querySelectorAll('.store-tabbtn').forEach((btn) => {
@@ -11592,6 +12233,10 @@
       el.hidden = el.dataset.storePanel !== valid;
     });
     localStorage.setItem(STORE_TAB_KEY, valid);
+    if (valid === 'aparencia') {
+      ensureThemePreview();
+      populateHeroProductOptions(); // catálogo pode ter carregado depois da loja
+    }
   }
   function restoreStoreTab() {
     const saved = localStorage.getItem(STORE_TAB_KEY);
@@ -12209,6 +12854,7 @@
       const action = btn.dataset.userAction;
       if (action === 'logout') logout();
       else if (action === 'store') { closeUserDropdown(); openTab('store'); }
+      else if (action === 'password') { closeUserDropdown(); openChangePasswordModal(); }
       else closeUserDropdown();
     });
   });
@@ -12236,6 +12882,32 @@
   updateAlertsMuteUi();
 
   showApp(false);
+  $('forgotPasswordBtn')?.addEventListener('click', () => {
+    const help = $('forgotPasswordHelp');
+    if (help) help.hidden = !help.hidden;
+  });
+  // Modo loja: a tela de login mostra qual loja está sendo acessada.
+  if (TENANT) {
+    const loginTitle = document.querySelector('#loginView h1');
+    const loginHint = document.querySelector('#loginView .muted');
+    if (loginHint) loginHint.textContent = 'Entre com o e-mail e a senha de acesso da loja.';
+    loadTenantInfo()
+      .then((info) => {
+        const name = (info && info.name) || TENANT;
+        if (loginTitle) loginTitle.textContent = `Painel — ${name}`;
+        if (!token) {
+          originalDocumentTitle = `Painel — ${name}`;
+          document.title = originalDocumentTitle;
+        }
+      })
+      .catch((err) => {
+        const box = $('loginError');
+        if (box) {
+          box.hidden = false;
+          box.textContent = err && err.message ? err.message : 'Não foi possível carregar a loja.';
+        }
+      });
+  }
   const _bootProfile = new URLSearchParams(window.location.search).get('profile');
   if (_bootProfile && DEV_PROFILES[_bootProfile]) {
     loginAsProfile(_bootProfile);

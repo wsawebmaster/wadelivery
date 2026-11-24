@@ -1,4 +1,4 @@
-# Encerra o modo leve (Next.js, storefront, admin e APIs locais)
+﻿# Encerra o modo leve (Next.js, storefront, admin e APIs locais)
 $ErrorActionPreference = "Continue"
 
 function Stop-Port([int]$Port) {

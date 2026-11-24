@@ -10,7 +10,9 @@ namespace Catalog.Api.Controllers;
 [Route("api/lojas")]
 public sealed class LojasController(
     IServiceProvider services,
-    TenantResolverService tenantResolver) : ControllerBase
+    TenantResolverService tenantResolver,
+    ICaptchaValidationService captcha,
+    SignupGuardService signupGuard) : ControllerBase
 {
     [HttpGet("slug/{slug}")]
     public async Task<IActionResult> ObterPorSlug(string slug, CancellationToken cancellationToken)
@@ -39,6 +41,15 @@ public sealed class LojasController(
         var validationError = StoreProvisioningService.Validate(request);
         if (validationError is not null)
             return BadRequest(new { error = validationError });
+
+        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        if (!await captcha.ValidateAsync(request.CaptchaToken, remoteIp, cancellationToken))
+            return BadRequest(new { error = "Não foi possível validar a verificação de segurança. Atualize a página e tente novamente." });
+
+        var normalizedEmail = (request.Email ?? "").Trim().ToLowerInvariant();
+        var guardError = await signupGuard.CheckAsync(normalizedEmail, cancellationToken);
+        if (guardError is not null)
+            return StatusCode(StatusCodes.Status429TooManyRequests, new { error = guardError });
 
         try
         {

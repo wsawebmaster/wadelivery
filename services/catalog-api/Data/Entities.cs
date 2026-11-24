@@ -32,6 +32,8 @@ public class ProductEntity
     public int SortOrder { get; set; }
     /// <summary>JSON com os grupos de modificadores do produto (adicionais cobrados etc.).</summary>
     public string? ModifierGroupsJson { get; set; }
+    /// <summary>Selo de destaque no card (ver CatalogInputValidation.ProductBadges); null = sem selo.</summary>
+    public string? Badge { get; set; }
     public CategoryEntity? Category { get; set; }
     public List<ProductIngredientEntity> ProductIngredients { get; set; } = [];
 }
@@ -73,6 +75,11 @@ public class AdminUserEntity
     public string? DisplayName { get; set; }
     /// <summary>Hash do PIN de 4 dígitos (camada adicional sobre o JWT) para autorizar ações dine-in sensíveis.</summary>
     public string? PinHash { get; set; }
+    /// <summary>
+    /// Senha definida por outra pessoa (temporária do cadastro ou redefinida pela plataforma/
+    /// administrador): o painel exige trocar antes de continuar.
+    /// </summary>
+    public bool MustChangePassword { get; set; }
 }
 
 /// <summary>
@@ -120,6 +127,10 @@ public class PlatformStoreEntity
     public string? PaymentNotes { get; set; }
     public string PaymentsJson { get; set; } = "[]";
     public bool Active { get; set; } = true;
+    /// <summary>Bloqueada automaticamente por mensalidade em atraso (desbloqueia ao pagar).</summary>
+    public bool BillingBlocked { get; set; }
+    /// <summary>Desbloqueio manual de loja em atraso: o bloqueio automático aguarda até esta data.</summary>
+    public DateTime? BillingBlockSuspendedUntil { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

@@ -259,6 +259,12 @@
   background: var(--accent-soft);
 }
 
+.wa-pill.is-error {
+  color: var(--error);
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.1);
+}
+
 /* ---------- Alertas ---------- */
 .wa-alert {
   padding: 10px 12px;
@@ -277,6 +283,42 @@
   color: var(--accent);
   border-color: rgba(255, 176, 32, 0.45);
   background: var(--accent-soft);
+}
+
+.wa-alert.is-ok {
+  color: var(--success);
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(52, 211, 153, 0.12);
+}
+
+/* ---------- Diálogos (o reset global * {padding:0} anula utilitários do Tailwind) ---------- */
+.wa-dialog {
+  padding: 22px 24px;
+}
+.wa-dialog > header {
+  margin-bottom: 18px;
+}
+.wa-dialog h3 {
+  margin: 22px 0 12px;
+}
+.wa-dialog .wa-field {
+  margin-bottom: 14px;
+}
+.wa-dialog .wa-alert {
+  margin-bottom: 12px;
+}
+.wa-dialog .wa-hint {
+  margin: 4px 0 14px;
+}
+.wa-dialog .wa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .wa-dialog {
+    padding: 16px;
+  }
 }
 
 /* ---------- Gráfico de barras ---------- */

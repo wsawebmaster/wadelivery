@@ -7,6 +7,7 @@ import {
   adminDisplayName,
   clearAdminSession,
   getAdminSession,
+  isDevRole,
   type AdminSession,
 } from '@/lib/admin-session'
 import { setUnauthorizedHandler } from '@/lib/admin-api'
@@ -33,7 +34,8 @@ export default function AdminShell({ title, subtitle, actions, children }: Admin
 
   useEffect(() => {
     const current = getAdminSession()
-    if (!current) {
+    // /admin é o painel da plataforma: só perfil Dev. Lojistas usam /{slug}/admin.
+    if (!current || !isDevRole(current.role)) {
       router.replace('/login')
       return
     }

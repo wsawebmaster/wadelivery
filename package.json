@@ -14,6 +14,8 @@
     "start": "next start",
     "lint": "next lint",
     "dev:up": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-up.ps1",
+    "dev:up:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-up.ps1 -Build",
+    "dev:up:legacy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-up.ps1 -LegacyFronts",
     "dev:down": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-down.ps1",
     "dev:up:light": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-up-light.ps1",
     "dev:down:light": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-down-light.ps1",

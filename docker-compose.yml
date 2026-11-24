@@ -37,6 +37,10 @@ services:
       Persistence: PostgreSQL
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=delivery_catalog;Username=${POSTGRES_USER:-delivery};Password=${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD in .env}"
       PublicApp__BaseUrl: ${PUBLIC_APP_BASE_URL:-http://localhost:3000}
+      # Cobrança de mensalidades (teste grátis, tolerância antes do bloqueio, mensalidade padrão das lojas novas)
+      Billing__TrialDays: ${BILLING_TRIAL_DAYS:-30}
+      Billing__BlockAfterDays: ${BILLING_BLOCK_AFTER_DAYS:-5}
+      Billing__DefaultMonthlyFee: ${BILLING_DEFAULT_MONTHLY_FEE:-0}
       Data__Root: /app/data
       Cors__Origins__0: http://localhost:8080
       Cors__Origins__1: http://127.0.0.1:8080
@@ -105,10 +109,12 @@ services:
       - orders-api
 
   # Fronts locais (só Docker Compose). Em produção usam Vercel — não afetam o remoto.
+  # Fronts legados opcionais (D:\delivery usa 8080/8081). No wadelivery, prefira Next :3000.
   storefront:
     image: nginx:alpine
     container_name: delivery-storefront
     restart: "no"
+    profiles: ["legacy-fronts"]
     ports:
       - "8080:80"
     volumes:
@@ -121,6 +127,7 @@ services:
     image: nginx:alpine
     container_name: delivery-admin
     restart: "no"
+    profiles: ["legacy-fronts"]
     ports:
       - "8081:80"
     volumes:

@@ -2,18 +2,21 @@
   'use strict';
 
   const API_BASE = (window.API_BASE_URL || 'http://localhost:5100').replace(/\/$/, '');
-  const CART_STORAGE_KEY = 'fabin-lanches-cart';
+  // Dados de pedido ficam separados por loja (todas as lojas compartilham o mesmo domínio).
+  // A Fabin mantém as chaves originais para não perder carrinhos já salvos.
+  const STORE_KEY_SUFFIX = window.WA_TENANT_SLUG && window.WA_TENANT_SLUG !== 'fabin' ? `:${window.WA_TENANT_SLUG}` : '';
+  const CART_STORAGE_KEY = 'fabin-lanches-cart' + STORE_KEY_SUFFIX;
   const CHECKOUT_STORAGE_KEY = 'fabin-lanches-checkout';
   /** Caderno de endereços do CLIENTE (não confundir com endereço da loja). */
   const CUSTOMER_ADDRESSES_KEY = 'fabin-lanches-customer-addresses';
-  const LAST_ORDER_KEY = 'fabin-lanches-last-order';
+  const LAST_ORDER_KEY = 'fabin-lanches-last-order' + STORE_KEY_SUFFIX;
   /** Credenciais de acompanhamento — só limpa em Finalizado/Cancelado (não na edição de itens). */
-  const TRACK_CREDS_KEY = 'fabin-lanches-track-creds';
-  const REPEAT_ASKED_KEY = 'fabin-lanches-repeat-asked';
+  const TRACK_CREDS_KEY = 'fabin-lanches-track-creds' + STORE_KEY_SUFFIX;
+  const REPEAT_ASKED_KEY = 'fabin-lanches-repeat-asked' + STORE_KEY_SUFFIX;
   /** Flag de SESSÃO da equipe: carimba quando o localStorage recusar persistir o
    * carrinho vazio após pedido staff (tablet PWA com storage bloqueado/cheio).
    * No load, forçamos carrinho vazio — um reload não pode "restaurar" os itens. */
-  const STAFF_CART_CLEARED_KEY = 'fabin-lanches-staff-cart-cleared';
+  const STAFF_CART_CLEARED_KEY = 'fabin-lanches-staff-cart-cleared' + STORE_KEY_SUFFIX;
   const INSTALL_BAR_VISIBLE_MS = 3_000;
   /** Poll do acompanhamento: curto o bastante para refletir confirmação no admin sem SSE público. */
   const ORDER_TRACK_POLL_MS = 3_000;
@@ -33,7 +36,7 @@
   let dineInTable = null;
   /** JWT do garçom/admin quando o cardápio é aberto autenticado (?token=). null no modo cliente. */
   let waiterToken = null;
-  const WAITER_SESSION_KEY = 'fabin_waiter_session'; // { token, tableId, label }
+  const WAITER_SESSION_KEY = 'fabin_waiter_session' + STORE_KEY_SUFFIX; // { token, tableId, label }
   /** Token JWT obtido no login do garçom pela tela de atendimento (antes de escolher canal/mesa). */
   let mesasAuthToken = null;
   /** Nome de exibição do garçom (claim "name" do JWT), exibido no cardápio. */
@@ -42,7 +45,7 @@
   let mesasUserName = null;
   /** Origem de atendimento fora do dine-in: 'balcao' | 'delivery' | 'telefone'. null = fluxo normal. */
   let staffSource = null;
-  const STAFF_SESSION_KEY = 'fabin_staff_session'; // { token, source, name }
+  const STAFF_SESSION_KEY = 'fabin_staff_session' + STORE_KEY_SUFFIX; // { token, source, name }
   /** Trava anti-duplo clique/reenvio durante o checkout (processamento pode demorar). */
   let checkoutInFlight = false;
   /** Chave de idempotência do pedido em andamento; reutilizada em retries e trocada a cada pedido novo. */
@@ -160,7 +163,7 @@
         question: 'Prefere média ou inteira?',
         options: ['Média', 'Inteira'],
         optionPricesFromItem: (item) => ({
-          Média: Number(item.priceMedia),
+          'Média': Number(item.priceMedia),
           Inteira: Number(item.priceInteira)
         })
       },
@@ -454,12 +457,123 @@
     if (store.deliveryFeePerKm != null) cfg.deliveryFeePerKm = Number(store.deliveryFeePerKm || 0);
     if (store.maxDeliveryKm != null) cfg.maxDeliveryKm = Number(store.maxDeliveryKm || 0);
     if (store.minDeliveryFee != null) cfg.minDeliveryFee = Number(store.minDeliveryFee || 0);
+    if (typeof store.whatsAppOrderTemplate === 'string') cfg.whatsAppOrderTemplate = store.whatsAppOrderTemplate;
     if (store.averageDeliveryMinutes != null) {
       cfg.averageDeliveryMinutes = Number(store.averageDeliveryMinutes || 40);
     }
     if (Array.isArray(store.breadOptions)) cfg.breadOptions = store.breadOptions;
     cfg.acceptingOrders = store.acceptingOrders !== false;
     cfg.extendedCloseUntilUtc = store.extendedCloseUntilUtc || null;
+    syncPixPaymentOption();
+    // Na prévia do painel o tema vem do editor (ainda não salvo), não da loja.
+    if (!IS_THEME_PREVIEW) applyThemeFields(store);
+  }
+
+  const THEME_FIELDS = ['tipoCard', 'corPrimaria', 'corSecundaria', 'corFundo', 'corTexto'];
+  const HERO_FIELDS = ['heroEnabled', 'heroProductId', 'heroTitle', 'heroSubtitle'];
+
+  /**
+   * Aparência escolhida no painel (Loja → Aparência). Reaplica o tema quando algo mudou,
+   * para o cardápio aberto se atualizar sozinho na próxima consulta da loja.
+   */
+  function applyThemeFields(source) {
+    if (!cfg || !source) return;
+    let changed = false;
+    THEME_FIELDS.forEach((field) => {
+      const value = source[field];
+      if (typeof value === 'string' && value && cfg[field] !== value) {
+        cfg[field] = value;
+        changed = true;
+      }
+    });
+    if (changed && document.body.classList.contains('tenant-themed')) applyTenantTheme();
+
+    let heroChanged = false;
+    HERO_FIELDS.forEach((field) => {
+      if (!(field in source)) return;
+      const value = field === 'heroEnabled' ? source[field] === true : String(source[field] || '');
+      if (cfg[field] !== value) {
+        cfg[field] = value;
+        heroChanged = true;
+      }
+    });
+    if (heroChanged) renderStoreHero();
+  }
+
+  function findMenuItemById(productId) {
+    for (const cat of cfg?.menu || []) {
+      const item = (cat.items || []).find((i) => i.id === productId);
+      if (item) return item;
+    }
+    return null;
+  }
+
+  /**
+   * Destaque no topo do cardápio (painel → Loja → Aparência): título, subtítulo, produto
+   * carro-chefe e informações rápidas (tempo médio de entrega e formas de pagamento).
+   */
+  function renderStoreHero() {
+    const hero = document.getElementById('storeHero');
+    if (!hero) return;
+    if (!cfg || !cfg.heroEnabled || waiterToken || staffSource) {
+      hero.hidden = true;
+      hero.innerHTML = '';
+      return;
+    }
+    const product = cfg.heroProductId ? findMenuItemById(cfg.heroProductId) : null;
+    const title = cfg.heroTitle || cfg.storeName || '';
+    const minutes = Number(cfg.averageDeliveryMinutes) || 0;
+    const payments = [cfg.pixKey ? 'Pix' : null, 'Cartão', 'Dinheiro'].filter(Boolean);
+    const chips = [
+      minutes > 0 ? `⏱️ Entrega média: <strong>${minutes}–${minutes + 15} min</strong>` : '',
+      `💳 ${escapeHtml(payments.length > 2 ? `${payments.slice(0, -1).join(', ')} ou ${payments[payments.length - 1]}` : payments.join(' ou '))}`
+    ].filter(Boolean);
+
+    let productHtml = '';
+    if (product) {
+      const image = resolveAssetUrl(product.imageUrl);
+      const price = hasPortionSizes(product)
+        ? `A partir de ${formatMoney(Math.min(product.priceMedia, product.priceInteira))}`
+        : formatMoney(product.price);
+      const badge = PRODUCT_BADGES[product.badge];
+      productHtml =
+        `<article class="store-hero-product">` +
+        (image ? `<div class="store-hero-media"><img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy"></div>` : '') +
+        (badge ? `<span class="item-badge item-badge--${badge.style}">${escapeHtml(badge.label)}</span>` : '') +
+        `<div class="store-hero-product-body">` +
+        `<div><strong class="store-hero-product-name">${escapeHtml(product.name)}</strong>` +
+        (product.description ? `<p class="store-hero-product-desc">${escapeHtml(product.description)}</p>` : '') +
+        `</div><div class="store-hero-product-foot"><span class="store-hero-price">${escapeHtml(price)}</span>` +
+        `<button type="button" class="store-hero-add" data-hero-add>+ Pedir o carro-chefe</button></div>` +
+        `</div></article>`;
+    }
+
+    hero.innerHTML =
+      `<div class="store-hero-text">` +
+      (title ? `<h2 class="store-hero-title">${escapeHtml(title)}</h2>` : '') +
+      (cfg.heroSubtitle ? `<p class="store-hero-subtitle">${escapeHtml(cfg.heroSubtitle)}</p>` : '') +
+      `<div class="store-hero-chips">${chips.map((c) => `<span>${c}</span>`).join('')}</div>` +
+      `</div>` + productHtml;
+    hero.classList.toggle('has-product', !!product);
+    hero.querySelector('.store-hero-product')?.classList.toggle('no-media', !resolveAssetUrl(product?.imageUrl));
+    hero.hidden = false;
+
+    hero.querySelector('[data-hero-add]')?.addEventListener('click', () => {
+      changeQuantity(product.name, product.price, 1, null, product.id);
+    });
+  }
+
+  // Prévia do painel (Loja → Aparência): o iframe recebe o tema por postMessage, sem salvar.
+  const IS_THEME_PREVIEW = (() => {
+    try { return new URLSearchParams(location.search).get('preview') === '1' && window.parent !== window; } catch (_) { return false; }
+  })();
+  if (IS_THEME_PREVIEW) {
+    window.addEventListener('message', (event) => {
+      if (event.origin !== location.origin) return;
+      const data = event.data;
+      if (!data || data.type !== 'wa-theme-preview' || !data.theme) return;
+      applyThemeFields(data.theme);
+    });
   }
 
   function buildPausedOrdersMessage() {
@@ -475,6 +589,93 @@
     return 'Estamos em intervalo e voltaremos em breve.';
   }
 
+  const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const CLOSING_SOON_MINUTES = 30;
+
+  /** "Funcionamos de segunda a sábado, das 11:00 às 23:55." (horário semanal resumido). */
+  function scheduleSummaryText() {
+    const enabled = perDayFromConfig().filter((p) => p.enabled).sort((a, b) => a.day - b.day);
+    if (!enabled.length) return '';
+    const groups = [];
+    for (const d of enabled) {
+      const g = groups.find((x) => x.open === d.open && x.close === d.close);
+      if (g) g.days.push(d.day);
+      else groups.push({ open: d.open, close: d.close, days: [d.day] });
+    }
+    const hours = groups.length === 1
+      ? `${formatScheduleDays(groups[0].days)}, das ${formatClock(groups[0].open)} às ${formatClock(groups[0].close)}`
+      : groups.map((g) => `${formatScheduleDays(g.days)} das ${formatClock(g.open)} às ${formatClock(g.close)}`).join('; ');
+    return `Funcionamos ${hours}.`;
+  }
+
+  /** Próxima abertura a partir de agora: { when: 'hoje'|'amanhã'|'terça', time: '18:30' } ou null. */
+  function nextOpening(now = new Date()) {
+    const sp = saoPauloParts(now);
+    const current = sp.hour * 60 + sp.minute;
+    for (let offset = 0; offset <= 7; offset += 1) {
+      const day = (sp.day + offset) % 7;
+      const entry = perDayEntryFor(day);
+      if (!entry?.enabled) continue;
+      const open = parseTimeToMinutes(entry.open);
+      if (open == null) continue;
+      if (offset === 0 && open <= current) continue;
+      const when = offset === 0 ? 'hoje' : offset === 1 ? 'amanhã' : WEEKDAY_NAMES[day];
+      return { when, time: formatClock(entry.open) };
+    }
+    return null;
+  }
+
+  /**
+   * Situação do horário para o selo do cabeçalho e o aviso do cardápio.
+   * state: open | closing | break | closed | paused
+   */
+  function storeHoursStatus(now = new Date()) {
+    if (!cfg) return { state: 'closed', label: 'Fechado agora', detail: '' };
+    if (cfg.acceptingOrders === false) {
+      return { state: 'paused', label: 'Pedidos pausados', detail: buildPausedOrdersMessage() };
+    }
+    if (isStoreOnBreak(now)) {
+      const sp = saoPauloParts(now);
+      const entry = resolveActiveEntry(sp, sp.hour * 60 + sp.minute);
+      const back = entry?.breakEnd ? formatClock(entry.breakEnd) : '';
+      return { state: 'break', label: back ? `Pausa até ${back}` : 'Em pausa', detail: buildBreakMessage() };
+    }
+    if (isStoreOpen(now)) {
+      const sp = saoPauloParts(now);
+      const current = sp.hour * 60 + sp.minute;
+      let closeAt = null;
+      let minutesLeft = null;
+      if (isWithinExtendedClose(now)) {
+        const until = new Date(cfg.extendedCloseUntilUtc);
+        const usp = saoPauloParts(until);
+        closeAt = `${String(usp.hour).padStart(2, '0')}:${String(usp.minute).padStart(2, '0')}`;
+        minutesLeft = Math.round((until.getTime() - now.getTime()) / 60000);
+      } else {
+        const entry = resolveActiveEntry(sp, current);
+        const close = parseTimeToMinutes(entry?.close);
+        if (close != null) {
+          closeAt = formatClock(entry.close);
+          minutesLeft = close >= current ? close - current : close + 1440 - current;
+        }
+      }
+      if (minutesLeft != null && minutesLeft <= CLOSING_SOON_MINUTES) {
+        return {
+          state: 'closing',
+          label: `Fecha às ${closeAt}`,
+          detail: `Fechamos às ${closeAt}. Faça seu pedido nos próximos ${Math.max(1, minutesLeft)} min.`
+        };
+      }
+      return { state: 'open', label: 'Aberto agora', detail: closeAt ? `Aberto até ${closeAt}.` : '' };
+    }
+    const next = nextOpening(now);
+    const reopen = next ? `Abrimos ${next.when} às ${next.time}.` : '';
+    return {
+      state: 'closed',
+      label: next ? (next.when === 'hoje' ? `Abre às ${next.time}` : 'Fechado agora') : 'Fechado agora',
+      detail: `Estamos fechados agora. ${reopen}`.trim()
+    };
+  }
+
   function canAcceptOrders(now = new Date()) {
     if (cfg && cfg.acceptingOrders === false) return false;
     if (!isStoreOpen(now)) return false;
@@ -484,6 +685,10 @@
   function ordersUnavailableMessage() {
     if (cfg && cfg.acceptingOrders === false) return buildPausedOrdersMessage();
     if (isStoreOnBreak()) return buildBreakMessage();
+    // Fechado: diz quando abre de novo, seguido do horário semanal.
+    const next = nextOpening();
+    const summary = scheduleSummaryText();
+    if (next) return `Estamos fechados agora. Abrimos ${next.when} às ${next.time}.${summary ? ` ${summary}` : ''}`;
     return buildClosedMessage();
   }
 
@@ -918,6 +1123,38 @@
     return html + `</li>`;
   }
 
+  /**
+   * Pedido pago via Pix: mostra a chave da loja com botão de copiar no acompanhamento,
+   * enquanto o pagamento não foi confirmado pela loja e o pedido não foi cancelado.
+   */
+  // O card é redesenhado pelas atualizações do pedido: guarda o "Copiado!" fora do botão.
+  let orderTrackPixCopiedUntil = 0;
+
+  function orderTrackPixHtml(order) {
+    const isPix = /pix/i.test(String(order?.paymentMethod || ''));
+    const pixKey = String(cfg?.pixKey || '').trim();
+    const paid = String(order?.paymentStatus || '').toLowerCase() === 'confirmed';
+    if (!isPix || paid || order?.status === 'Cancelled') return '';
+    if (!pixKey) {
+      // Pedido feito com Pix, mas a loja não tem chave cadastrada (ou removeu depois).
+      return (
+        `<div class="ot-pix ot-pix-missing" role="note">` +
+        `<span>A loja ainda não informou a chave Pix. Combine o pagamento pelo WhatsApp.</span>` +
+        `</div>`
+      );
+    }
+    const label = String(cfg?.pixKeyLabel || '').trim();
+    return (
+      `<div class="ot-pix" role="group" aria-label="Chave Pix para pagamento">` +
+      `<div class="ot-pix-info">` +
+      `<span class="ot-pix-label">Chave Pix${label ? ` (${escapeHtml(label)})` : ''}</span>` +
+      `<strong class="ot-pix-key">${escapeHtml(pixKey)}</strong>` +
+      `</div>` +
+      `<button type="button" class="ot-pix-copy" data-ot-copy-pix>${Date.now() < orderTrackPixCopiedUntil ? 'Copiado!' : 'Copiar chave Pix'}</button>` +
+      `</div>`
+    );
+  }
+
   function renderOrderTrackDetails(order) {
     const idEl = document.getElementById('orderTrackId');
     const statusEl = document.getElementById('orderTrackStatusLabel');
@@ -982,6 +1219,7 @@
         `<div class="ot-row"><span>Pagamento</span><span>${escapeHtml(
           order.paymentStatusLabel || order.paymentMethod || '—'
         )}</span></div>` +
+        orderTrackPixHtml(order) +
         (order.needsChange && order.changeFor != null
           ? `<div class="ot-row"><span>Troco</span><span class="ot-money">${formatMoney(Number(order.changeFor))}` +
             (Number(order.changeFor) - Number(order.total) > 0
@@ -2840,7 +3078,7 @@
         const found = catalog.get(item.name);
         if (!found) return null;
         const optionPrices = {
-          Média: found.priceMedia,
+          'Média': found.priceMedia,
           Inteira: found.priceInteira
         };
         return {
@@ -3060,13 +3298,19 @@
           }
         ];
 
+    // App instalado abre a página da própria loja: /{slug} (servida pelo servidor) ou o
+    // storefront com ?tenant= (sem isso, "./" levava a /storefront/ = loja padrão).
+    const tenantQuery = new URLSearchParams(window.location.search).get('tenant');
+    const storeStartUrl = window.location.pathname.startsWith('/storefront/')
+      ? `${window.location.pathname}${tenantQuery ? `?tenant=${encodeURIComponent(tenantQuery)}` : ''}`
+      : window.location.pathname;
     const manifest = {
-      id: startUrl,
+      id: new URL(storeStartUrl, window.location.origin).href || startUrl,
       name,
       short_name: shortName,
       description: `Cardápio delivery — ${name}`,
-      start_url: './',
-      scope: './',
+      start_url: storeStartUrl,
+      scope: '/',
       display: 'standalone',
       orientation: 'portrait-primary',
       background_color: '#f3f4f6',
@@ -3088,6 +3332,14 @@
       await cache.put(manifestUrl, response.clone());
       await cache.put(new URL('manifest.json', pageUrl).href, response.clone());
     } catch (_) { /* ignore */ }
+
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration('./');
+        if (reg) await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(r, 1500))]);
+      } catch (_) { /* ignore */ }
+    }
+
 
     let link = document.querySelector('link[rel="manifest"]');
     if (!link) {
@@ -3804,7 +4056,7 @@
       const forma = document.getElementById('formaPagamento');
       if (forma && data.formaPagamento) {
         const option = Array.from(forma.options).find((o) => o.value === data.formaPagamento);
-        if (option) forma.value = data.formaPagamento;
+        if (option && !option.disabled) forma.value = data.formaPagamento;
       }
 
       if (data.pixTiming) {
@@ -3932,6 +4184,11 @@
       estiloBotao: store.estiloBotao || 'arredondado',
       bannerUrl: store.bannerUrl || '',
       coverUrl: store.coverUrl || '',
+      whatsAppOrderTemplate: typeof store.whatsAppOrderTemplate === 'string' ? store.whatsAppOrderTemplate : '',
+      heroEnabled: store.heroEnabled === true,
+      heroProductId: store.heroProductId || '',
+      heroTitle: store.heroTitle || '',
+      heroSubtitle: store.heroSubtitle || '',
       menu: (catalog.categories || [])
         .filter((c) => c && c.showInMenu !== false && !isHiddenMenuCategory(c))
         .map((c) => ({
@@ -3959,7 +4216,8 @@
                 ingredients,
                 principalIngredients,
                 modifierGroups: Array.isArray(i.modifierGroups) ? i.modifierGroups : [],
-                imageUrl: i.imageUrl
+                imageUrl: i.imageUrl,
+                badge: typeof i.badge === 'string' ? i.badge : ''
               };
             })
         }))
@@ -3974,31 +4232,61 @@
     const title = document.querySelector('.barra__topo__md h3');
     if (title) title.textContent = (cfg.storeName || 'Fabin Lanches').toUpperCase();
     document.title = `${cfg.storeName} — Cardápio Delivery`;
-    applyTenantTheme();
+    if (window.WA_TENANT_SLUG !== 'fabin') applyTenantTheme();
+    // Prévia do painel: avisa que carregou para receber o tema em edição.
+    if (IS_THEME_PREVIEW) {
+      try { window.parent.postMessage({ type: 'wa-theme-preview-ready' }, location.origin); } catch (_) { /* ignore */ }
+    }
     applyStoreIcons();
     await updatePwaManifestFromStore();
     armInstallPromptCapture();
 
-    // Mantém a arte original da Fabin; banners de novas lojas são configurados pelo slug.
-    if (!window.WA_TENANT_SLUG && cfg.logoUrl && !cfg.logoUrl.includes('barra-v-mobile')) {
+    // Mantém a arte original do topo; logoUrl da API só aplica se for diferente da barra padrão
+    if (window.WA_TENANT_SLUG !== 'fabin' && cfg.logoUrl && !cfg.logoUrl.includes('barra-v-mobile')) {
       const header = document.querySelector('.barra__topo__md');
       if (header) {
         const logoAbs = cfg.logoUrl.startsWith('http') ? cfg.logoUrl : `${API_BASE}${cfg.logoUrl}`;
         header.style.backgroundImage = `url(${logoAbs})`;
       }
-
     }
 
     setStatus('', false);
 
     const pixKeyEl = document.getElementById('pixKeyValue');
     if (pixKeyEl) pixKeyEl.textContent = cfg.pixKey || '';
+    syncPixPaymentOption();
 
     syncCartWithCatalog();
   }
 
+  // ── Tema claro/escuro escolhido pelo cliente (só lojas com tema; salvo no navegador) ──
+  const COLOR_SCHEME_KEY = 'wa-color-scheme';
+
+  function readColorScheme() {
+    try { return localStorage.getItem(COLOR_SCHEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (_) { return 'light'; }
+  }
+
+  function applyColorScheme(scheme) {
+    const dark = scheme === 'dark' && document.body.classList.contains('tenant-themed');
+    if (dark) document.documentElement.dataset.theme = 'dark';
+    else delete document.documentElement.dataset.theme;
+    const btn = document.getElementById('colorSchemeToggle');
+    if (btn) {
+      btn.hidden = !document.body.classList.contains('tenant-themed');
+      btn.setAttribute('aria-pressed', String(dark));
+      btn.setAttribute('aria-label', dark ? 'Ativar tema claro' : 'Ativar tema escuro');
+      btn.title = dark ? 'Tema claro' : 'Tema escuro';
+    }
+  }
+
+  function toggleColorScheme() {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(COLOR_SCHEME_KEY, next); } catch (_) { /* sem storage: vale só nesta visita */ }
+    applyColorScheme(next);
+  }
+
   function applyTenantTheme() {
-    if (!window.WA_TENANT_SLUG) return;
+    if (!window.WA_TENANT_SLUG || window.WA_TENANT_SLUG === 'fabin') return;
 
     const root = document.documentElement;
     root.style.setProperty('--tenant-primary', cfg.corPrimaria);
@@ -4006,6 +4294,9 @@
     root.style.setProperty('--tenant-background', cfg.corFundo);
     root.style.setProperty('--tenant-text', cfg.corTexto);
     document.body.classList.add('tenant-themed');
+    // Lojas da plataforma: todas as categorias numa rolagem vertical (a Fabin mantém o carrossel).
+    document.body.classList.add('menu-vertical');
+    applyColorScheme(readColorScheme());
     document.body.classList.toggle('tenant-layout-list', cfg.layoutCardapio === 'lista');
     document.body.classList.toggle('tenant-layout-grid', cfg.layoutCardapio === 'grade');
     const hasProductPhoto = cfg.layoutCardapio === 'com-foto'
@@ -4014,6 +4305,10 @@
     document.body.classList.toggle('tenant-card-large-photo', cfg.tipoCard === 'foto-grande');
     document.body.classList.toggle('tenant-card-horizontal', cfg.tipoCard === 'lista-horizontal');
     document.body.classList.toggle('tenant-card-compact', cfg.tipoCard === 'compacto');
+    document.body.classList.toggle('tenant-card-vitrine', cfg.tipoCard === 'vitrine');
+    document.body.classList.toggle('tenant-card-minimal', cfg.tipoCard === 'minimalista');
+    document.body.classList.toggle('tenant-card-highlight', cfg.tipoCard === 'destaque');
+    document.body.classList.toggle('tenant-card-modern', cfg.tipoCard === 'moderno');
     document.body.classList.toggle('tenant-button-square', cfg.estiloBotao === 'quadrado');
     document.body.classList.toggle('tenant-button-pill', cfg.estiloBotao === 'pilula');
 
@@ -4408,7 +4703,7 @@
   function baseUnitPrice(item) {
     const found = findMenuItem(item.name);
     if (!found) return Number(item.price) || 0;
-    const optionPrices = { Média: found.item.priceMedia, Inteira: found.item.priceInteira };
+    const optionPrices = { 'Média': found.item.priceMedia, Inteira: found.item.priceInteira };
     return resolveOptionUnitPrice(found.item.price, optionPrices, item.option || null);
   }
 
@@ -5139,6 +5434,47 @@
     return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   }
 
+  /** Selos de produto (chaves validadas em CatalogInputValidation.ProductBadges). */
+  const PRODUCT_BADGES = {
+    'rei-da-casa': { label: '👑 Rei da Casa', style: 'gold' },
+    'mais-pedido': { label: '🔥 Mais Pedido', style: 'fire' },
+    'novidade': { label: '✨ Novidade', style: 'gold' },
+    'promocao': { label: '💸 Promoção', style: 'fire' },
+    'para-dividir': { label: '🍟 Para Dividir', style: 'gold' },
+    'vegetariano': { label: '🌱 Vegetariano', style: 'green' }
+  };
+
+  const TROCO_PRESETS = [50, 100, 200];
+  let trocoChipsOtherSelected = false;
+
+  /**
+   * Estado dos botões de troco a partir dos campos reais: marca o botão escolhido e
+   * desativa valores menores que o total (o troco precisa cobrir o pedido).
+   */
+  function syncTrocoChips() {
+    const chips = document.getElementById('trocoChips');
+    const check = document.getElementById('precisaTroco');
+    const input = document.getElementById('trocoInput');
+    const valueWrap = document.getElementById('trocoValueWrap');
+    if (!chips || !check || !input) return;
+    const orderTotal = calcItemsTotal() + (Number(bairroValor) || 0);
+    const value = parseFloat(String(input.value || '').replace(',', '.'));
+    const preset = check.checked && !trocoChipsOtherSelected && TROCO_PRESETS.includes(value) ? value : null;
+    chips.querySelectorAll('[data-troco]').forEach((btn) => {
+      const choice = btn.dataset.troco;
+      const amount = Number(choice);
+      if (Number.isFinite(amount)) btn.disabled = amount < orderTotal;
+      const active = choice === 'none'
+        ? !check.checked
+        : choice === 'outro'
+          ? check.checked && preset === null
+          : preset === amount;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+    if (valueWrap) valueWrap.hidden = !check.checked || preset !== null;
+  }
+
   function updateTotals() {
     total = calcItemsTotal();
     const finalTotal = total + (Number(bairroValor) || 0);
@@ -5157,6 +5493,7 @@
 
     const entregaRow = document.getElementById('entregaLabel')?.parentElement;
     if (entregaRow) entregaRow.hidden = isDineInFulfillment();
+    syncTrocoChips();
   }
 
   function toggleCartTotalDetails() {
@@ -5183,6 +5520,23 @@
     return selected ? selected.value : '';
   }
 
+  /**
+   * Sem chave Pix cadastrada a loja não consegue receber Pix: a opção some do checkout
+   * (hidden + disabled, pois alguns navegadores ignoram hidden em <option>).
+   */
+  function syncPixPaymentOption() {
+    const select = document.getElementById('formaPagamento');
+    const option = select?.querySelector('option[value="Pix"]');
+    if (!select || !option) return;
+    const available = !!String(cfg?.pixKey || '').trim();
+    option.hidden = !available;
+    option.disabled = !available;
+    if (!available && select.value === 'Pix') {
+      select.value = '';
+      updatePaymentExtras();
+    }
+  }
+
   function updatePaymentExtras() {
     const forma = document.getElementById('formaPagamento');
     const trocoWrap = document.getElementById('trocoWrap');
@@ -5192,6 +5546,7 @@
     const value = forma.value;
     if (trocoWrap) trocoWrap.hidden = value !== 'Dinheiro';
     if (pixWrap) pixWrap.hidden = value !== 'Pix';
+    if (value === 'Dinheiro') syncTrocoChips();
 
     if (value === 'Pix' && cfg) {
       const keyEl = document.getElementById('pixKeyValue');
@@ -5215,9 +5570,32 @@
     if (!cfg) return;
     const open = canAcceptOrders();
     const closedMsg = ordersUnavailableMessage();
+    const status = storeHoursStatus();
+
+    // Selo do cabeçalho: sempre visível (aberto, fecha em breve, pausa, fechado).
+    const pill = document.getElementById('storeHoursPill');
+    if (pill) {
+      pill.hidden = false;
+      pill.dataset.state = status.state;
+      const label = pill.querySelector('.store-hours-label');
+      if (label) label.textContent = status.label;
+      pill.title = [status.detail, scheduleSummaryText()].filter(Boolean).join(' ');
+    }
+
+    // Aviso: fechado/pausa/pedidos pausados e também "fecha em breve" (ainda aceita pedidos).
     if (banner) {
-      banner.hidden = open;
-      banner.textContent = closedMsg;
+      const showBanner = !open || status.state === 'closing';
+      banner.hidden = !showBanner;
+      banner.classList.toggle('is-closing', open && status.state === 'closing');
+      if (showBanner) {
+        const summary = status.state === 'paused' ? '' : scheduleSummaryText();
+        const browseHint = open ? '' : 'Você pode explorar o cardápio e montar seu pedido.';
+        banner.innerHTML =
+          `<strong>${escapeHtml(status.detail || closedMsg)}</strong>` +
+          (summary || browseHint
+            ? `<span class="store-closed-sub">${escapeHtml([summary, browseHint].filter(Boolean).join(' '))}</span>`
+            : '');
+      }
     }
     if (finalizeBtn) {
       finalizeBtn.disabled = !open;
@@ -5233,7 +5611,9 @@
   }
 
   function usesKmDelivery() {
-    return !!(cfg && cfg.latitude != null && cfg.longitude != null && Number(cfg.deliveryFeePerKm) > 0);
+    // Por km (taxa/km > 0) ou taxa fixa (taxa/km 0 + taxa mínima > 0): ambos cotam por distância.
+    return !!(cfg && cfg.latitude != null && cfg.longitude != null
+      && (Number(cfg.deliveryFeePerKm) > 0 || Number(cfg.minDeliveryFee) > 0));
   }
 
   function resetAddressInfo() {
@@ -5382,9 +5762,11 @@
         bairroValor = roundUpDeliveryFee(quote.fee || 0);
         deliveryDistanceKm = Number(quote.distanceKm || 0);
         deliveryOk = true;
-        const perKm = Number(quote.feePerKm || cfg.deliveryFeePerKm || 0);
+        const perKm = Number(quote.feePerKm ?? cfg.deliveryFeePerKm ?? 0);
         showResolvedAddress(
-          `${enderecoBase} · ${deliveryDistanceKm} km × ${formatMoney(perKm)}/km · Entrega: ${formatMoney(bairroValor)}`
+          perKm > 0
+            ? `${enderecoBase} · ${deliveryDistanceKm} km × ${formatMoney(perKm)}/km · Entrega: ${formatMoney(bairroValor)}`
+            : `${enderecoBase} · ${deliveryDistanceKm} km · Entrega (taxa fixa): ${formatMoney(bairroValor)}`
         );
         enrichSelectedAddressFromViaCep(data);
         return true;
@@ -5764,37 +6146,70 @@
       }
     }
 
-    const obsBlock = observacoes ? `\n📝 Observações: ${observacoes}` : '';
     const typeLabel = pickup ? 'Retirada no local' : residenceTypeLabel(customerAddr?.residenceType);
-    const feeLine = dineIn
-      ? 'Taxa de Entrega: R$ 0,00 (consumo no local)'
+    const feeValue = dineIn
+      ? 'R$ 0,00 (consumo no local)'
       : (pickup
-        ? 'Taxa de Entrega: R$ 0,00 (retirada)'
-        : `Taxa de Entrega: ${formatMoney(deliveryFee)}${deliveryDistanceKm != null ? ` (${deliveryDistanceKm} km)` : ''}`);
+        ? 'R$ 0,00 (retirada)'
+        : `${formatMoney(deliveryFee)}${deliveryDistanceKm != null ? ` (${deliveryDistanceKm} km)` : ''}`);
     const placeBlock = dineIn
       ? `🪑 Consumo no local · Mesa ${dineInTable?.label || ''}`
       : (pickup
         ? `🏪 Retirada no local:\n${deliveryLines.address}`
         : `🛵 Entrega${addrLabel}:\n${deliveryLines.address}\n🏷 Tipo: ${typeLabel}\n📍 Complemento/instruções: ${deliveryLines.reference || '—'}`);
 
-    return `Olá, ${cfg.storeName}!
+    // Variáveis do modelo de mensagem (painel da loja → Loja → Mensagem WhatsApp).
+    const vars = {
+      loja: cfg.storeName || '',
+      pedido: orderId || '',
+      recebimento: dineIn ? 'Consumo no local' : (pickup ? 'Retirar no local' : 'Entrega'),
+      itens: itemsMessage,
+      subtotal: formatMoney(itemsTotal),
+      taxa_entrega: feeValue,
+      total: formatMoney(itemsTotal + deliveryFee),
+      pagamento: `${formaPagamento}${pagamentoExtra}`,
+      observacoes: observacoes || '',
+      endereco_entrega: placeBlock,
+      cliente: clienteNome || '',
+      telefone: clienteTelefone || ''
+    };
+    const template = typeof cfg.whatsAppOrderTemplate === 'string' && cfg.whatsAppOrderTemplate.trim()
+      ? cfg.whatsAppOrderTemplate
+      : DEFAULT_WHATSAPP_ORDER_TEMPLATE;
+    return renderWhatsAppTemplate(template, vars);
+  }
 
-🛒 Pedido *${orderId}*
-📦 Recebimento: ${dineIn ? 'Consumo no local' : (pickup ? 'Retirar no local' : 'Entrega')}
+  /**
+   * Fallback quando a API não envia o modelo (versões antigas). Mesmo texto do
+   * WhatsAppOrderTemplate.Default do catalog-api.
+   */
+  const DEFAULT_WHATSAPP_ORDER_TEMPLATE = [
+    'Olá, {loja}!', '',
+    '🛒 Pedido *{pedido}*', '📦 Recebimento: {recebimento}', '',
+    '✅ Itens:', '{itens}', '',
+    'Sub-total: {subtotal}', 'Taxa de Entrega: {taxa_entrega}', '🤑 Total: {total}',
+    '💳 Pagamento: {pagamento}', '📝 Observações: {observacoes}', '',
+    '{endereco_entrega}', '👤 Nome: {cliente}', '📞 Telefone: {telefone}', '',
+    '*Aguardo confirmação!*'
+  ].join('\n');
 
-✅ Itens:
-${itemsMessage}
-
-Sub-total: ${formatMoney(itemsTotal)}
-${feeLine}
-🤑 Total: ${formatMoney(itemsTotal + deliveryFee)}
-💳 Pagamento: ${formaPagamento}${pagamentoExtra}${obsBlock}
-
-${placeBlock}
-👤 Nome: ${clienteNome}
-📞 Telefone: ${clienteTelefone}
-
-*Aguardo confirmação!*`;
+  /**
+   * Substitui {variavel} pelos valores. Linhas cujas variáveis ficaram todas vazias são
+   * removidas (ex.: "Observações: {observacoes}" sem observação). Variáveis desconhecidas
+   * ficam como estão.
+   */
+  function renderWhatsAppTemplate(template, vars) {
+    const pattern = /\{([a-z_]+)\}/g;
+    return String(template)
+      .replace(/\r\n?/g, '\n')
+      .split('\n')
+      .filter((line) => {
+        const names = [...line.matchAll(pattern)].map((m) => m[1]).filter((n) => n in vars);
+        return names.length === 0 || names.some((n) => String(vars[n] ?? '').trim() !== '');
+      })
+      .map((line) => line.replace(pattern, (whole, name) => (name in vars ? String(vars[name] ?? '') : whole)))
+      .join('\n')
+      .trim();
   }
 
   function openWhatsApp(message) {
@@ -6416,11 +6831,22 @@ ${placeBlock}
     setTimeout(setupCategoryNav, 30);
   }
 
+  function isVerticalMenu() {
+    return document.body.classList.contains('menu-vertical');
+  }
+
   function buildCategoryPage(category) {
     const page = document.createElement('section');
     page.className = 'category-page';
     page.dataset.cat = category.id;
+    page.id = `categoria-${category.id}`;
     page.setAttribute('aria-label', category.title);
+
+    // Título da seção (visível só na rolagem vertical; o carrossel usa as abas).
+    const heading = document.createElement('h2');
+    heading.className = 'category-section-title';
+    heading.textContent = category.title;
+    page.appendChild(heading);
 
     const items = getMatchingMenuItems(category);
     items.forEach((item, idx) => {
@@ -6451,6 +6877,18 @@ ${placeBlock}
           }
         });
         card.appendChild(img);
+      }
+
+      // Selo de destaque escolhido no painel (Produtos → Selo de destaque).
+      const badgeInfo = PRODUCT_BADGES[item.badge];
+      if (badgeInfo) {
+        const badgeEl = document.createElement('span');
+        badgeEl.className = `item-badge item-badge--${badgeInfo.style}`;
+        badgeEl.textContent = badgeInfo.label;
+        card.appendChild(badgeEl);
+        card.classList.add('has-badge');
+        // Sem foto o selo não tem onde ficar por cima: o card reserva espaço no topo.
+        if (!card.querySelector('.item-image')) card.classList.add('no-image');
       }
 
       const controls = document.createElement('div');
@@ -6517,6 +6955,11 @@ ${placeBlock}
       page.appendChild(card);
     });
 
+    if (productSearchQuery && items.length === 0 && isVerticalMenu()) {
+      page.hidden = true; // na rolagem vertical, categorias sem resultado somem
+      return page;
+    }
+
     if (productSearchQuery && items.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'product-search-empty';
@@ -6534,7 +6977,15 @@ ${placeBlock}
     const categories = getMenuCategories();
     menu.innerHTML = '';
     categories.forEach((cat) => menu.appendChild(buildCategoryPage(cat)));
-    if (categories.length) {
+    if (isVerticalMenu()) {
+      if (productSearchQuery && !menu.querySelector('.category-page:not([hidden])')) {
+        const empty = document.createElement('p');
+        empty.className = 'product-search-empty menu-search-empty';
+        empty.setAttribute('role', 'status');
+        empty.textContent = 'Nenhum produto encontrado.';
+        menu.appendChild(empty);
+      }
+    } else if (categories.length) {
       scrollToCategory(activeCategory || categories[0].id, 'auto');
     }
     updateMenuNavArrows();
@@ -6555,9 +7006,25 @@ ${placeBlock}
 
   let categoryScrollSuppress = false;
 
+  /** Altura ocupada no topo pelo cabeçalho fixo + abas de categoria grudadas. */
+  function stickyTopOffset() {
+    const header = document.querySelector('.barra__topo__md');
+    const bar = document.querySelector('.categories-wrapper');
+    return (header?.getBoundingClientRect().height || 54) + (bar?.getBoundingClientRect().height || 44) + 8;
+  }
+
   function scrollToCategory(catId, behavior) {
     const menu = document.getElementById('menu');
     if (!menu || !getMenuCategories().length) return;
+    if (isVerticalMenu()) {
+      const section = menu.querySelector(`.category-page[data-cat="${cssEscape(catId)}"]`);
+      if (!section) return;
+      const top = section.getBoundingClientRect().top + window.scrollY - stickyTopOffset();
+      categoryScrollSuppress = true;
+      window.scrollTo({ top: Math.max(0, top), behavior: behavior === 'smooth' ? 'smooth' : 'auto' });
+      setTimeout(() => { categoryScrollSuppress = false; }, behavior === 'smooth' ? 700 : 50);
+      return;
+    }
     const x = categoryIndexFor(catId) * categoryPageWidth();
     if (Math.abs(menu.scrollLeft - x) < 2) return;
     categoryScrollSuppress = true;
@@ -6619,6 +7086,7 @@ ${placeBlock}
     let suppressClick = false;
 
     menu.addEventListener('pointerdown', (e) => {
+      if (isVerticalMenu()) return;
       if (e.pointerType !== 'mouse' || e.button !== 0) return;
       drag = { startX: e.clientX, startY: e.clientY, startScroll: menu.scrollLeft, moved: false };
     });
@@ -6722,9 +7190,39 @@ ${placeBlock}
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const onResize = debounce(() => {
+      if (isVerticalMenu()) return;
       scrollToCategory(activeCategory, reducedMotion ? 'auto' : 'smooth');
       updateMenuNavArrows();
     }, 120);
+
+    // Rolagem vertical: a aba ativa segue a seção visível no topo.
+    let verticalRecenter = null;
+    const syncActiveCategoryFromPageScroll = () => {
+      if (!isVerticalMenu() || categoryScrollSuppress) return;
+      // Seção "ativa": a que cruza a linha logo abaixo das abas fixas (scroll spy).
+      const line = stickyTopOffset() + 40;
+      const sections = [...menu.querySelectorAll('.category-page:not([hidden])')];
+      let current = null;
+      for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        if (rect.top <= line && rect.bottom > line) { current = section.dataset.cat; break; }
+        if (rect.top <= line) current = section.dataset.cat; // passou da linha (entre seções)
+      }
+      // No fim da página, a última seção é a ativa mesmo que não alcance o topo.
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      if (atBottom && sections.length) current = sections[sections.length - 1].dataset.cat;
+      if (!current) current = sections[0]?.dataset.cat || null;
+      if (current && current !== activeCategory) {
+        activeCategory = current;
+        updateActiveCategoryButton(current);
+        if (verticalRecenter) clearTimeout(verticalRecenter);
+        verticalRecenter = setTimeout(() => {
+          const btn = document.querySelector(`.category-btn[data-cat="${activeCategory}"]`);
+          if (btn) centerElementInScroll(btn);
+        }, 120);
+      }
+    };
+    window.addEventListener('scroll', syncActiveCategoryFromPageScroll, { passive: true });
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onResize);
   }
@@ -6836,6 +7334,36 @@ ${placeBlock}
   }
 
   function bindEvents() {
+    document.getElementById('colorSchemeToggle')?.addEventListener('click', toggleColorScheme);
+    // Botão "Copiar chave Pix" do acompanhamento (o card é re-renderizado a cada atualização).
+    document.getElementById('orderTrackDetails')?.addEventListener('click', async (event) => {
+      const btn = event.target.closest('[data-ot-copy-pix]');
+      if (!btn) return;
+      event.preventDefault();
+      const pixKey = String(cfg?.pixKey || '').trim();
+      try {
+        await copyTextToClipboard(pixKey);
+        const feedbackMs = 1800;
+        orderTrackPixCopiedUntil = Date.now() + feedbackMs;
+        const current = document.querySelector('#orderTrackDetails [data-ot-copy-pix]') || btn;
+        current.textContent = 'Copiado!';
+        setTimeout(() => {
+          const latest = document.querySelector('#orderTrackDetails [data-ot-copy-pix]');
+          if (latest && Date.now() >= orderTrackPixCopiedUntil) latest.textContent = 'Copiar chave Pix';
+        }, feedbackMs + 50);
+      } catch (_) {
+        // Sem acesso à área de transferência: seleciona a chave para cópia manual.
+        const keyEl = btn.closest('.ot-pix')?.querySelector('.ot-pix-key');
+        if (keyEl && window.getSelection) {
+          const range = document.createRange();
+          range.selectNodeContents(keyEl);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        flashCopyPixButton(btn, false);
+      }
+    });
     setupMenuSwipe();
     bindProductSearch();
     document.getElementById('addAddressBtn')?.addEventListener('click', () => openAddressForm(null));
@@ -6981,8 +7509,31 @@ ${placeBlock}
         trocoInput.disabled = !precisaTroco.checked;
         if (!precisaTroco.checked) trocoInput.value = '';
         saveCheckoutForm();
+        syncTrocoChips();
       });
+      trocoInput.addEventListener('input', syncTrocoChips);
     }
+
+    // Troco rápido: os botões preenchem a caixa "Preciso de troco" e o valor.
+    document.getElementById('trocoChips')?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-troco]');
+      if (!btn || btn.disabled || !precisaTroco || !trocoInput) return;
+      const choice = btn.dataset.troco;
+      if (choice === 'none') {
+        precisaTroco.checked = false;
+        trocoInput.value = '';
+        trocoInput.disabled = true;
+      } else {
+        precisaTroco.checked = true;
+        trocoInput.disabled = false;
+        trocoChipsOtherSelected = choice === 'outro';
+        trocoInput.value = choice === 'outro' ? '' : choice;
+      }
+      if (choice !== 'outro') trocoChipsOtherSelected = false;
+      saveCheckoutForm();
+      syncTrocoChips();
+      if (choice === 'outro') trocoInput.focus();
+    });
 
     const copyPixBtn = document.getElementById('copyPixBtn');
     if (copyPixBtn) {
@@ -7082,6 +7633,7 @@ ${placeBlock}
   }
 
   function trackPageview() {
+    if (IS_THEME_PREVIEW) return; // prévia do painel não conta como acesso ao cardápio
     try {
       const path = `${location.pathname || '/'}${location.search || ''}` || '/';
       fetch(`${API_BASE}/api/v1/analytics/pageview`, {
@@ -7118,8 +7670,14 @@ ${placeBlock}
       loadCheckoutForm();
       renderCategories();
       renderMenu();
+      renderStoreHero();
       updateUI();
       updateStoreStatusBanner();
+      // Horário muda com o relógio (abre, fecha, pausa): reavalia sem esperar a API.
+      setInterval(updateStoreStatusBanner, 30_000);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) updateStoreStatusBanner();
+      });
       showInstallAppBar();
       await resolveTableFromQuery();
       // /login é tela de atendimento explícita. Com sessão válida (exp do JWT =

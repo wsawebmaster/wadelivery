@@ -10,7 +10,7 @@ public static partial class CatalogInputValidation
     private static readonly HashSet<string> ReservedTenantSlugs = new(StringComparer.Ordinal)
     {
         "admin", "api", "assets", "public", "login", "suporte", "faq",
-        "criar-loja", "storefront"
+        "criar-loja", "storefront", "legacy-admin", "www"
     };
 
     private static readonly HashSet<string> AllowedImageExt = new(StringComparer.OrdinalIgnoreCase)
@@ -46,13 +46,43 @@ public static partial class CatalogInputValidation
         var newPass = body.NewPassword ?? "";
         if (newPass.Length < 6) return "Senha muito curta (mín. 6 caracteres).";
         if (newPass.Length > 128) return "Senha muito longa (máx. 128 caracteres).";
+        if (newPass == current) return "A nova senha deve ser diferente da atual.";
         return null;
     }
+
+    /// <summary>
+    /// Modelos de card de produto do cardápio (painel → Loja → Aparência e cadastro completo).
+    /// O cardápio aplica cada um como classe CSS em apps/storefront.
+    /// </summary>
+    public static readonly IReadOnlySet<string> CardTypes = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "foto-grande", "lista-horizontal", "compacto", "vitrine", "minimalista", "destaque", "moderno"
+    };
+
+    private static readonly Regex HexColorRegex = new("^#[0-9a-fA-F]{6}$", RegexOptions.Compiled);
+
+    public static bool IsHexColor(string? value) => value is not null && HexColorRegex.IsMatch(value);
 
     public static string? ValidatePatchStore(PatchStoreRequest body)
     {
         if (body.StoreName is not null && (body.StoreName.Trim().Length is < 2 or > 200))
             return "Nome da loja inválido.";
+        if (body.TipoCard is not null && !CardTypes.Contains(body.TipoCard))
+            return "Modelo de card inválido.";
+        if (!string.IsNullOrWhiteSpace(body.HeroProductId) && !IsSafeId(body.HeroProductId))
+            return "Produto do destaque inválido.";
+        if (body.HeroTitle is not null && body.HeroTitle.Trim().Length > 90)
+            return "Título do destaque muito longo (máx. 90 caracteres).";
+        if (body.HeroSubtitle is not null && body.HeroSubtitle.Trim().Length > 220)
+            return "Subtítulo do destaque muito longo (máx. 220 caracteres).";
+        foreach (var color in new[] { body.CorPrimaria, body.CorSecundaria, body.CorFundo, body.CorTexto })
+        {
+            if (color is not null && !IsHexColor(color))
+                return "Cor inválida. Use o formato hexadecimal, por exemplo #1f6feb.";
+        }
+        if (body.WhatsAppOrderTemplate is not null
+            && body.WhatsAppOrderTemplate.Length > Services.WhatsAppOrderTemplate.MaxLength)
+            return $"A mensagem do WhatsApp deve ter até {Services.WhatsAppOrderTemplate.MaxLength} caracteres.";
         if (body.Whatsapp is not null)
         {
             var d = DigitsOnly(body.Whatsapp);
@@ -251,8 +281,24 @@ public static partial class CatalogInputValidation
         return null;
     }
 
+    /// <summary>Selos de destaque dos produtos (texto e estilo de cada um ficam no cardápio e no painel).</summary>
+    public static readonly IReadOnlySet<string> ProductBadges = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "rei-da-casa", "mais-pedido", "novidade", "promocao", "para-dividir", "vegetariano"
+    };
+
+    /// <summary>Normaliza o selo recebido: vazio → null (sem selo).</summary>
+    public static string? NormalizeProductBadge(string? badge)
+    {
+        var value = (badge ?? "").Trim();
+        return value.Length == 0 ? null : value;
+    }
+
     public static string? ValidateProduct(UpsertProductRequest body)
     {
+        var badge = NormalizeProductBadge(body.Badge);
+        if (badge is not null && !ProductBadges.Contains(badge))
+            return "Selo do produto inválido.";
         // Id vazio = auto-increment no create; se informado, valida formato
         if (!string.IsNullOrWhiteSpace(body.Id) && !IsSafeId(body.Id))
             return "Id de produto inválido.";
@@ -345,8 +391,13 @@ public static partial class CatalogInputValidation
     public static string? ValidateCnpj(string? cnpj)
     {
         if (string.IsNullOrWhiteSpace(cnpj)) return null;
-        var digits = DigitsOnly(cnpj);
-        return digits.Length == 14 ? null : "CNPJ inválido (use 14 dígitos).";
+        return IsValidCnpj(cnpj) ? null : "CNPJ inválido.";
+    }
+
+    public static string? ValidateCpf(string? cpf)
+    {
+        if (string.IsNullOrWhiteSpace(cpf)) return null;
+        return IsValidCpf(cpf) ? null : "CPF inválido.";
     }
 
     public static string? ValidateCep(string? cep)
@@ -572,21 +623,57 @@ public static partial class CatalogInputValidation
 
     public static bool IsValidCnpj(string? value)
     {
-        var digits = DigitsOnly(value);
-        if (digits.Length != 14 || digits.All(c => c == digits[0])) return false;
+        var normalized = NormalizeCnpj(value);
+        if (normalized is null || normalized.Length != 14) return false;
+        if (normalized.All(c => c == normalized[0])) return false;
+        if (!CnpjRegex().IsMatch(normalized)) return false;
 
+        static int CharValue(char c) => c - '0';
         static int CheckDigit(string source, int[] weights)
         {
             var sum = 0;
             for (var i = 0; i < weights.Length; i++)
-                sum += (source[i] - '0') * weights[i];
+                sum += CharValue(source[i]) * weights[i];
             var remainder = sum % 11;
             return remainder < 2 ? 0 : 11 - remainder;
         }
 
-        var first = CheckDigit(digits[..12], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-        var second = CheckDigit(digits[..12] + first, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-        return digits[12] - '0' == first && digits[13] - '0' == second;
+        var first = CheckDigit(normalized[..12], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        var second = CheckDigit(normalized[..12] + first, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        return CharValue(normalized[12]) == first && CharValue(normalized[13]) == second;
+    }
+
+    public static bool IsValidCpf(string? value)
+    {
+        var digits = DigitsOnly(value);
+        if (digits.Length != 11 || digits.All(c => c == digits[0])) return false;
+
+        static int CheckDigit(string source, int[] weights)
+        {
+            var sum = weights.Select((weight, index) => (source[index] - '0') * weight).Sum();
+            var remainder = sum % 11;
+            return remainder < 2 ? 0 : 11 - remainder;
+        }
+
+        var first = CheckDigit(digits[..9], [10, 9, 8, 7, 6, 5, 4, 3, 2]);
+        var second = CheckDigit(digits[..9] + first, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+        return digits[9] - '0' == first && digits[10] - '0' == second;
+    }
+
+    /// <summary>Normaliza CNPJ numérico ou alfanumérico: maiúsculas, remove máscara, mantém A-Z0-9.</summary>
+    public static string? NormalizeCnpj(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var chars = value.Trim().ToUpperInvariant()
+            .Where(c => (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z'))
+            .ToArray();
+        return chars.Length == 0 ? null : new string(chars);
+    }
+
+    public static string? NormalizeCpf(string? value)
+    {
+        var digits = DigitsOnly(value);
+        return digits.Length == 0 ? null : digits;
     }
 
     /// <summary>
@@ -609,4 +696,7 @@ public static partial class CatalogInputValidation
 
     [GeneratedRegex(@"-{2,}")]
     private static partial Regex SlugRegex();
+
+    [GeneratedRegex(@"^[A-Z0-9]{12}[0-9]{2}$")]
+    private static partial Regex CnpjRegex();
 }

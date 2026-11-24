@@ -163,6 +163,49 @@ public class JsonPlatformStoreRepository : IPlatformStoreRepository
         }
     }
 
+    /// <summary>Modo JSON (instalação leve, loja única): a cobrança automática não se aplica.</summary>
+    public Task<int> EvaluateBillingAsync(DateTime nowUtc, Services.BillingOptions options, CancellationToken ct = default) =>
+        Task.FromResult(0);
+
+    public Task<PlatformStoreDto?> UpdateBillingAsync(Guid id, UpdatePlatformBillingRequest request, CancellationToken ct = default) =>
+        MutateAsync(id, current => current with
+        {
+            MonthlyFee = request.MonthlyFee is null ? current.MonthlyFee : Math.Max(0, request.MonthlyFee.Value),
+            Courtesy = request.Courtesy ?? current.Courtesy,
+            CourtesyUntil = request.ClearCourtesyUntil == true ? null : request.CourtesyUntil ?? current.CourtesyUntil,
+            NextDueAt = request.NextDueAt ?? current.NextDueAt,
+            PaymentNotes = request.PaymentNotes ?? current.PaymentNotes,
+            UpdatedAt = DateTime.UtcNow
+        }, ct);
+
+    public Task<PlatformStoreDto?> SetBlockedAsync(Guid id, bool blocked, Services.BillingOptions options, CancellationToken ct = default) =>
+        MutateAsync(id, current => current with
+        {
+            Active = !blocked,
+            Status = blocked ? "inactive" : "active",
+            BillingBlocked = false,
+            UpdatedAt = DateTime.UtcNow
+        }, ct);
+
+    private async Task<PlatformStoreDto?> MutateAsync(Guid id, Func<PlatformStoreDto, PlatformStoreDto> change, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var list = await ReadAllAsync(ct);
+            var idx = list.FindIndex(x => x.Id == id);
+            if (idx < 0) return null;
+            list[idx] = change(list[idx]);
+            await WriteAllAsync(list, ct);
+            InvalidateCache();
+            return list[idx];
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<PlatformStoreDto?> RegisterPaymentAsync(Guid id, RegisterPlatformPaymentRequest request, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
@@ -174,16 +217,15 @@ public class JsonPlatformStoreRepository : IPlatformStoreRepository
             var current = list[idx];
             var paidAt = request.PaidAt ?? DateTime.UtcNow;
             var amount = request.Amount ?? current.MonthlyFee;
-            var payments = current.Payments.ToList();
-            payments.Insert(0, new PlatformPaymentDto(paidAt, amount, request.Note));
+            var payments = current.Payments.Append(new PlatformPaymentDto(paidAt, amount, request.Note))
+                .OrderByDescending(p => p.PaidAt).ToList();
             var updated = current with
             {
                 Payments = payments,
-                LastPaymentAt = paidAt,
+                LastPaymentAt = payments[0].PaidAt,
                 PaymentStatus = "paid",
                 Courtesy = false,
                 NextDueAt = request.NextDueAt ?? paidAt.AddMonths(1),
-                PaymentNotes = string.IsNullOrWhiteSpace(request.Note) ? current.PaymentNotes : request.Note.Trim(),
                 UpdatedAt = DateTime.UtcNow
             };
             list[idx] = updated;
@@ -387,7 +429,7 @@ public class JsonPlatformStoreRepository : IPlatformStoreRepository
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string? NormalizeCnpj(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : Catalog.Api.CatalogInputValidation.DigitsOnly(value);
+        Catalog.Api.CatalogInputValidation.NormalizeCnpj(value);
 
     private static string? NormalizeCep(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : Catalog.Api.CatalogInputValidation.DigitsOnly(value);

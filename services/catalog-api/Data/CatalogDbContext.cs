@@ -28,7 +28,7 @@ public class CatalogDbContext(DbContextOptions<CatalogDbContext> options) : DbCo
             e.Ignore(x => x.Address);
             e.Ignore(x => x.CNPJ);
             e.Ignore(x => x.TenantId);
-            e.Property(x => x.Cnpj).HasMaxLength(14);
+            e.Property(x => x.Cnpj).HasMaxLength(18);
             e.Property(x => x.Email).HasMaxLength(200);
             e.Property(x => x.LogoUrl).HasMaxLength(500);
             e.Property(x => x.BannerUrl).HasMaxLength(500);
@@ -72,6 +72,7 @@ public class CatalogDbContext(DbContextOptions<CatalogDbContext> options) : DbCo
         {
             e.ToTable("products");
             e.HasKey(x => x.Id);
+            e.Property(x => x.Badge).HasMaxLength(32);
             e.Property(x => x.Id).HasMaxLength(96);
             e.Property(x => x.StoreId).IsRequired();
             e.Property(x => x.CategoryId).HasMaxLength(64).IsRequired();

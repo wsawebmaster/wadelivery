@@ -19,4 +19,9 @@ public interface IPlatformStoreRepository
     Task TouchLastAccessAsync(int? storeId, DateTime when, CancellationToken ct = default);
     /// <summary>Persiste o snapshot de estatísticas da loja (acessos ao cardápio + pedidos). No-op quando storeId é nulo.</summary>
     Task SaveStatsAsync(int? storeId, StoreStatsDto stats, CancellationToken ct = default);
+    /// <summary>Aplica as regras de cobrança em todas as lojas (vencimento, bloqueio/desbloqueio). Retorna quantas mudaram.</summary>
+    Task<int> EvaluateBillingAsync(DateTime nowUtc, Services.BillingOptions options, CancellationToken ct = default);
+    Task<PlatformStoreDto?> UpdateBillingAsync(Guid id, UpdatePlatformBillingRequest request, CancellationToken ct = default);
+    /// <summary>Bloqueio/desbloqueio manual pelo painel da plataforma.</summary>
+    Task<PlatformStoreDto?> SetBlockedAsync(Guid id, bool blocked, Services.BillingOptions options, CancellationToken ct = default);
 }

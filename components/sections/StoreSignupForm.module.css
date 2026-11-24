@@ -91,9 +91,45 @@
   color: white;
 }
 
+.modeSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.modeButton,
+.modeActive {
+  min-height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-2);
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modeActive {
+  border-color: var(--brand);
+  background: rgba(31, 111, 235, .14);
+  color: var(--text);
+}
+
 .panel h2 {
   margin-bottom: 8px;
   font-size: 1.4rem;
+}
+
+.sectionTitle {
+  margin: 32px 0 6px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border, rgba(148, 163, 184, .2));
+  font-size: 1.15rem;
+}
+
+.sectionTitle + .muted {
+  margin-bottom: 14px;
 }
 
 .formGrid,

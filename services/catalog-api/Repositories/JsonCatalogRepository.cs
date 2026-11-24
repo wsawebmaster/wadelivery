@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Catalog.Api;
 using Catalog.Api.Models;
+using Catalog.Api.Services;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Catalog.Api.Repositories;
@@ -90,10 +91,13 @@ public class JsonCatalogRepository : ICatalogRepository
             await using var stream = File.OpenRead(_storePath);
             var store = await JsonSerializer.DeserializeAsync<StoreDto>(stream, JsonOptions, ct)
                 ?? throw new InvalidOperationException("store-config.json inválido.");
+            var customTemplate = WhatsAppOrderTemplate.Normalize(store.WhatsAppOrderTemplate);
             store = store with
             {
                 BreadOptions = StoreBreadOptions.Normalize(store.BreadOptions),
-                Schedule = ScheduleNormalizer.EnsurePerDay(store.Schedule)
+                Schedule = ScheduleNormalizer.EnsurePerDay(store.Schedule),
+                WhatsAppOrderTemplate = customTemplate ?? WhatsAppOrderTemplate.Default,
+                WhatsAppOrderTemplateCustomized = customTemplate is not null
             };
             _cache.Set(StoreCacheKey, store, TimeSpan.FromMinutes(5));
             return store;
@@ -213,8 +217,23 @@ public class JsonCatalogRepository : ICatalogRepository
                     : current.WaiterSessionHours,
                 Slug = request.Slug is null
                     ? current.Slug
-                    : CatalogInputValidation.NormalizeTenantSlug(request.Slug)
+                    : CatalogInputValidation.NormalizeTenantSlug(request.Slug),
+                TipoCard = request.TipoCard ?? current.TipoCard,
+                HeroEnabled = request.HeroEnabled ?? current.HeroEnabled,
+                HeroProductId = request.HeroProductId is null ? current.HeroProductId : (string.IsNullOrWhiteSpace(request.HeroProductId) ? null : request.HeroProductId.Trim()),
+                HeroTitle = request.HeroTitle is null ? current.HeroTitle : (string.IsNullOrWhiteSpace(request.HeroTitle) ? null : request.HeroTitle.Trim()),
+                HeroSubtitle = request.HeroSubtitle is null ? current.HeroSubtitle : (string.IsNullOrWhiteSpace(request.HeroSubtitle) ? null : request.HeroSubtitle.Trim()),
+                CorPrimaria = request.CorPrimaria ?? current.CorPrimaria,
+                CorSecundaria = request.CorSecundaria ?? current.CorSecundaria,
+                CorFundo = request.CorFundo ?? current.CorFundo,
+                CorTexto = request.CorTexto ?? current.CorTexto,
+                WhatsAppOrderTemplate = request.ResetWhatsAppOrderTemplate == true
+                    ? null
+                    : request.WhatsAppOrderTemplate is not null
+                        ? WhatsAppOrderTemplate.Normalize(request.WhatsAppOrderTemplate)
+                        : WhatsAppOrderTemplate.Normalize(current.WhatsAppOrderTemplate)
             };
+            updated = updated with { WhatsAppOrderTemplateCustomized = updated.WhatsAppOrderTemplate is not null };
             await WriteJsonAsync(_storePath, updated, ct);
             InvalidateCache();
             _logger.LogInformation("Store config atualizado via JSON");
@@ -489,7 +508,10 @@ public class JsonCatalogRepository : ICatalogRepository
                 request.PriceMedia,
                 request.PriceInteira,
                 request.ShowInMenu,
-                ModifierGroups.Normalize(request.ModifierGroups ?? existing?.ModifierGroups));
+                ModifierGroups.Normalize(request.ModifierGroups ?? existing?.ModifierGroups),
+                request.Badge is not null
+                    ? CatalogInputValidation.NormalizeProductBadge(request.Badge)
+                    : existing?.Badge);
 
             items.Add(product);
             categories[catIdx] = categories[catIdx] with { Items = items };

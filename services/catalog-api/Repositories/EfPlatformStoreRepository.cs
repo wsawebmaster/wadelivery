@@ -151,14 +151,19 @@ public class EfPlatformStoreRepository(
         var paidAt = request.PaidAt ?? DateTime.UtcNow;
         var amount = request.Amount ?? entity.MonthlyFee;
         var payments = DeserializePayments(entity.PaymentsJson);
-        payments.Insert(0, new PlatformPaymentDto(paidAt, amount, request.Note));
+        payments.Add(new PlatformPaymentDto(paidAt, amount, request.Note));
+        // Lançamentos retroativos ficam na ordem certa; o último pagamento é o mais recente.
+        payments = payments.OrderByDescending(p => p.PaidAt).ToList();
         entity.PaymentsJson = JsonSerializer.Serialize(payments, JsonOptions);
-        entity.LastPaymentAt = paidAt;
+        entity.LastPaymentAt = payments[0].PaidAt;
         entity.PaymentStatus = "paid";
         entity.Courtesy = false;
-        entity.NextDueAt = request.NextDueAt ?? paidAt.AddMonths(1);
-        if (!string.IsNullOrWhiteSpace(request.Note))
-            entity.PaymentNotes = request.Note;
+        entity.NextDueAt = request.NextDueAt ?? (entity.NextDueAt is { } due && due > paidAt.AddDays(-15)
+            ? due.AddMonths(1)              // paga o vencimento atual: próximo mês a partir dele
+            : paidAt.AddMonths(1));
+        // Bloqueio por inadimplência é desfeito no pagamento (bloqueio manual não).
+        if (entity.BillingBlocked) Services.BillingPolicy.Unblock(entity);
+        entity.BillingBlockSuspendedUntil = null;
         entity.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
         InvalidateCache();
@@ -364,7 +369,71 @@ public class EfPlatformStoreRepository(
         entity.LastAccessAt,
         entity.BackUsername,
         entity.BackPassword,
-        DeserializeStats(entity.StatsJson));
+        DeserializeStats(entity.StatsJson),
+        entity.BillingBlocked,
+        entity.BillingBlockSuspendedUntil);
+
+    public async Task<int> EvaluateBillingAsync(DateTime nowUtc, Services.BillingOptions options, CancellationToken ct = default)
+    {
+        var stores = await db.PlatformStores.ToListAsync(ct);
+        var changed = 0;
+        foreach (var store in stores)
+        {
+            if (!Services.BillingPolicy.Apply(store, nowUtc, options)) continue;
+            store.UpdatedAt = DateTime.UtcNow;
+            changed++;
+        }
+        if (changed > 0)
+        {
+            await db.SaveChangesAsync(ct);
+            InvalidateCache();
+        }
+        return changed;
+    }
+
+    public async Task<PlatformStoreDto?> UpdateBillingAsync(Guid id, UpdatePlatformBillingRequest request, CancellationToken ct = default)
+    {
+        var entity = await db.PlatformStores.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null) return null;
+        if (request.MonthlyFee is not null) entity.MonthlyFee = Math.Max(0, request.MonthlyFee.Value);
+        if (request.Courtesy is not null)
+        {
+            entity.Courtesy = request.Courtesy.Value;
+            entity.PaymentStatus = entity.Courtesy ? "courtesy" : (entity.PaymentStatus == "courtesy" ? "pending" : entity.PaymentStatus);
+        }
+        if (request.ClearCourtesyUntil == true) entity.CourtesyUntil = null;
+        else if (request.CourtesyUntil is not null) entity.CourtesyUntil = request.CourtesyUntil;
+        if (request.NextDueAt is not null) entity.NextDueAt = request.NextDueAt;
+        if (request.PaymentNotes is not null) entity.PaymentNotes = NullIfEmpty(request.PaymentNotes);
+        entity.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        InvalidateCache();
+        return Map(entity);
+    }
+
+    public async Task<PlatformStoreDto?> SetBlockedAsync(Guid id, bool blocked, Services.BillingOptions options, CancellationToken ct = default)
+    {
+        var entity = await db.PlatformStores.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null) return null;
+        if (blocked)
+        {
+            // Bloqueio manual: não é desfeito automaticamente pelo pagamento.
+            entity.Active = false;
+            entity.Status = "inactive";
+            entity.BillingBlocked = false;
+        }
+        else
+        {
+            Services.BillingPolicy.Unblock(entity);
+            // Desbloqueio manual de loja ainda em atraso: dá alguns dias antes de bloquear de novo.
+            if (Services.BillingPolicy.DaysOverdue(entity.NextDueAt, DateTime.UtcNow) > 0 && !entity.Courtesy && entity.MonthlyFee > 0)
+                entity.BillingBlockSuspendedUntil = DateTime.UtcNow.AddDays(options.ManualUnblockGraceDays);
+        }
+        entity.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        InvalidateCache();
+        return Map(entity);
+    }
 
     private static StoreStatsDto? DeserializeStats(string? json)
     {
@@ -409,7 +478,7 @@ public class EfPlatformStoreRepository(
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string? NormalizeCnpj(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : CatalogInputValidation.DigitsOnly(value);
+        CatalogInputValidation.NormalizeCnpj(value);
 
     private static string? NormalizeCep(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : CatalogInputValidation.DigitsOnly(value);

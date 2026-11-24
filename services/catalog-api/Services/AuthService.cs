@@ -98,7 +98,8 @@ public class AuthService(IConfiguration config, IServiceProvider services)
             expires,
             username,
             role,
-            storeId);
+            storeId,
+            await GetMustChangePasswordAsync(username, ct));
     }
 
     /// <summary>
@@ -251,6 +252,19 @@ public class AuthService(IConfiguration config, IServiceProvider services)
     /// Retorna o nome de exibição salvo para o usuário (null quando não persistido ou
     /// quando o usuário vem de configuração de ambiente, que não tem perfil editável).
     /// </summary>
+    /// <summary>true quando a senha atual foi definida por outra pessoa e precisa ser trocada.</summary>
+    public async Task<bool> GetMustChangePasswordAsync(string username, CancellationToken ct = default)
+    {
+        var persistence = config["Persistence"] ?? "Json";
+        if (!string.Equals(persistence, "PostgreSQL", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(persistence, "Postgres", StringComparison.OrdinalIgnoreCase))
+            return false;
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        var user = await FindAdminUserTrackedAsync(db, username, ct);
+        return user?.MustChangePassword == true;
+    }
+
     public async Task<string?> GetDisplayNameAsync(string username, CancellationToken ct = default)
     {
         using var scope = services.CreateScope();
@@ -323,6 +337,7 @@ public class AuthService(IConfiguration config, IServiceProvider services)
                 if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
                     return AccountUpdateResult.WrongPassword;
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                user.MustChangePassword = false;
                 await db.SaveChangesAsync(ct);
                 return AccountUpdateResult.Ok;
             }

@@ -4,7 +4,9 @@ namespace Catalog.Api.Data;
 
 public class Loja
 {
-    public int Id { get; set; } = 1;
+    // Sem valor padrão: com Id != 0 o EF envia o valor explicitamente em vez de usar a
+    // sequência identity, e novas lojas colidiam com a loja 1 (PK_stores).
+    public int Id { get; set; }
     public int TenantId => Id;
     public string Nome { get; set; } = string.Empty;
     [NotMapped]
@@ -34,6 +36,14 @@ public class Loja
     public string LayoutCardapio { get; set; } = "grade";
     public string EstiloBotao { get; set; } = "arredondado";
     public bool IsTeste { get; set; }
+    /// <summary>Modelo personalizado da mensagem de WhatsApp do pedido; null = modelo padrão.</summary>
+    public string? WhatsAppOrderTemplate { get; set; }
+    // ── Destaque no topo do cardápio (painel → Loja → Aparência) ──
+    public bool HeroEnabled { get; set; }
+    /// <summary>Produto carro-chefe exibido no destaque; null = sem produto.</summary>
+    public string? HeroProductId { get; set; }
+    public string? HeroTitle { get; set; }
+    public string? HeroSubtitle { get; set; }
     public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
     public DateTime DataAtualizacao { get; set; } = DateTime.UtcNow;
     public string PixKey { get; set; } = string.Empty;

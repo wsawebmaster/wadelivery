@@ -1,14 +1,19 @@
-# Sobe o ambiente local completo para testar e administrar.
-# - Docker: PostgreSQL, RabbitMQ, Jaeger, catalog-api, orders-api, gateway
-# - Fronts: storefront (:8080) e admin (:8081)
+﻿# Sobe o ambiente local completo para testar e administrar.
+# - Docker: PostgreSQL, catalog-api, orders-api, gateway
+# - Next.js admin/plataforma (:3000)
+# - Fronts legados opcionais: storefront (:8080) e admin (:8081) com -LegacyFronts
 #
 # Uso (na raiz do repo):
 #   .\scripts\dev-up.ps1
 #   npm run dev:up
+#   .\scripts\dev-up.ps1 -Build      # rebuild das imagens .NET
+#   .\scripts\dev-up.ps1 -LegacyFronts
 
 param(
+    [switch]$Build,
     [switch]$SkipBuild,
-    [switch]$NoBrowser
+    [switch]$NoBrowser,
+    [switch]$LegacyFronts
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,6 +24,53 @@ $ComposeScript = Join-Path $PSScriptRoot "docker-compose-wsl.ps1"
 function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg) { Write-Host "    $msg" -ForegroundColor Green }
 function Write-Warn($msg) { Write-Host "    $msg" -ForegroundColor Yellow }
+
+function Ensure-LocalProxy([int]$ListenPort, [string]$TargetHost, [int]$TargetPort) {
+    $existing = Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -match "wsl-portproxy\.cjs\D+$ListenPort\D+$([regex]::Escape($TargetHost))\D+$TargetPort" }
+    if ($existing) {
+        Write-Ok "Proxy local :$ListenPort -> ${TargetHost}:$TargetPort ja ativo."
+        return
+    }
+    $proxyScript = Join-Path $env:TEMP "opencode\wsl-portproxy.cjs"
+    $proxyDir = Split-Path -Parent $proxyScript
+    if (-not (Test-Path $proxyDir)) { New-Item -ItemType Directory -Path $proxyDir -Force | Out-Null }
+    $proxyCode = @'
+const net = require('net');
+const [,, listenPort, targetHost, targetPort] = process.argv;
+if (!listenPort || !targetHost || !targetPort) process.exit(1);
+const server = net.createServer((client) => {
+  const target = net.connect({ host: targetHost, port: Number(targetPort) });
+  client.pipe(target); target.pipe(client);
+  const cleanup = () => { client.destroy(); target.destroy(); };
+  client.on('error', cleanup); target.on('error', cleanup);
+  client.on('close', cleanup); target.on('close', cleanup);
+});
+server.on('error', (e) => { console.error(e.message); process.exit(1); });
+server.listen(Number(listenPort), '127.0.0.1');
+'@
+    [System.IO.File]::WriteAllText($proxyScript, $proxyCode, [System.Text.UTF8Encoding]::new($false))
+    Start-Process -FilePath "node" -ArgumentList @($proxyScript, "$ListenPort", $TargetHost, "$TargetPort") -WindowStyle Hidden | Out-Null
+    Start-Sleep -Milliseconds 400
+    if (Test-PortOpen $ListenPort) {
+        Write-Ok "Proxy local :$ListenPort -> ${TargetHost}:$TargetPort iniciado."
+    } else {
+        Write-Warn "Nao foi possivel iniciar proxy local na porta $ListenPort."
+    }
+}
+
+function Ensure-WslKeepAlive() {
+    # Com systemd, o WSL encerra a distro quando nenhuma sessao wsl.exe fica aberta,
+    # derrubando o Docker e todos os containers ~1 min apos este script terminar.
+    $existing = Get-CimInstance Win32_Process -Filter "Name='wsl.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -match 'wadelivery-keepalive' }
+    if ($existing) {
+        Write-Ok "Sessao WSL de keep-alive ja ativa."
+        return
+    }
+    Start-Process -FilePath "wsl.exe" -ArgumentList @('-d', 'Ubuntu', '--', 'bash', '-c', '"exec -a wadelivery-keepalive sleep infinity"') -WindowStyle Hidden | Out-Null
+    Write-Ok "Sessao WSL de keep-alive iniciada (encerrada por dev-down)."
+}
 
 function Get-WslHostIp() {
     $addresses = & wsl.exe -d Ubuntu -- hostname -I 2>$null
@@ -63,12 +115,12 @@ function Test-PortOpen([int]$Port) {
     }
 }
 
-function Wait-Http([string]$Url, [int]$Seconds = 90) {
+function Wait-Http([string]$Url, [int]$Seconds = 90, [hashtable]$Headers = @{}) {
     $deadline = (Get-Date).AddSeconds($Seconds)
     while ((Get-Date) -lt $deadline) {
         try {
-            $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 3
-            if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { return $true }
+            $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 3 -Headers $Headers
+            if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 300) { return $true }
         } catch { }
         Start-Sleep -Seconds 2
     }
@@ -128,61 +180,97 @@ if ($LASTEXITCODE -ne 0) {
     throw "Docker nao esta disponivel. Inicie o Ubuntu WSL e o Docker Engine e rode de novo."
 }
 Write-Ok "Docker OK"
+Ensure-WslKeepAlive
 
 Write-Step "Subindo banco e APIs (PostgreSQL, catalog-api, orders-api, Gateway)"
-if ($SkipBuild) {
-    & $ComposeScript up --detach postgres catalog-api orders-api gateway
-} else {
+$shouldBuild = $Build -and -not $SkipBuild
+if ($shouldBuild) {
+    Write-Ok "Build habilitado (-Build)."
     & $ComposeScript up --build --detach postgres catalog-api orders-api gateway
+} else {
+    Write-Ok "Inicializacao rapida (sem rebuild). Use -Build se mudou codigo .NET/Dockerfile."
+    & $ComposeScript up --detach postgres catalog-api orders-api gateway
 }
 
 Write-Step "Aguardando Gateway em :5100"
 $AccessBaseUrl = "http://localhost"
 $GatewayHealthUrl = "{0}:5100/api/v1/health" -f $AccessBaseUrl
-$gatewayReady = Wait-Http $GatewayHealthUrl 10
+$gatewayReady = Wait-Http $GatewayHealthUrl 15
 if (-not $gatewayReady) {
     $wslIp = Get-WslHostIp
     if ($wslIp) {
-        $AccessBaseUrl = "http://$wslIp"
-        $GatewayHealthUrl = "{0}:5100/api/v1/health" -f $AccessBaseUrl
-        $gatewayReady = Wait-Http $GatewayHealthUrl 120
-        if ($gatewayReady) {
-            Write-Warn "Portas do Docker WSL nao estao encaminhadas para localhost; usando $AccessBaseUrl."
+        $wslBaseUrl = "http://$wslIp"
+        $wslGatewayHealthUrl = "{0}:5100/api/v1/health" -f $wslBaseUrl
+        $gatewayReadyWsl = Wait-Http $wslGatewayHealthUrl 90
+        if ($gatewayReadyWsl) {
+            Write-Warn "Portas do Docker WSL nao estao encaminhadas para localhost; criando proxy local."
+            Ensure-LocalProxy 5100 $wslIp 5100
+            $AccessBaseUrl = "http://localhost"
+            $GatewayHealthUrl = "{0}:5100/api/v1/health" -f $AccessBaseUrl
+            $gatewayReady = Wait-Http $GatewayHealthUrl 20
+            if (-not $gatewayReady) {
+                $AccessBaseUrl = $wslBaseUrl
+                $GatewayHealthUrl = $wslGatewayHealthUrl
+                $gatewayReady = $true
+            }
         }
     } else {
-        $gatewayReady = Wait-Http $GatewayHealthUrl 110
+        $gatewayReady = Wait-Http $GatewayHealthUrl 60
     }
 }
 if (-not $gatewayReady) {
-    Write-Warn "Health do gateway ainda nao respondeu. Tentando store..."
+    Write-Warn "Health do gateway ainda nao respondeu. Tentando catalog..."
+}
+$CatalogHealthUrl = "{0}:5100/api/v1/health/catalog" -f $AccessBaseUrl
+$catalogReady = Wait-Http $CatalogHealthUrl 60
+if (-not $catalogReady) {
+    Write-Warn "Catalog health ainda falhou - reiniciando catalog/orders..."
+    & $ComposeScript restart catalog-api orders-api | Out-Null
+    Start-Sleep 10
+    $catalogReady = Wait-Http $CatalogHealthUrl 60
 }
 $StoreUrl = "{0}:5100/api/v1/store" -f $AccessBaseUrl
-if (-not (Wait-Http $StoreUrl 60)) {
-    Write-Warn "Store ainda falhou - reiniciando catalog/orders..."
-    & $ComposeScript restart catalog-api orders-api | Out-Null
-    Start-Sleep 15
-}
-if (Wait-Http $StoreUrl 60) {
-    Write-Ok "Gateway OK (store/catalog disponiveis)"
+$tenantHeaders = @{ "X-Tenant-Slug" = "fabin" }
+$storeReady = Wait-Http $StoreUrl 45 $tenantHeaders
+if ($catalogReady -and $storeReady) {
+    Write-Ok "Gateway OK (catalog/store disponiveis)"
+} elseif ($catalogReady) {
+    Write-Warn "Catalog OK, mas store tenant-aware ainda nao respondeu. Rode: .\scripts\docker-compose-wsl.ps1 logs --tail 80 catalog-api"
 } else {
-    Write-Warn "Gateway subiu, mas store ainda falha. Rode: .\scripts\docker-compose-wsl.ps1 logs catalog-api"
+    Write-Warn "Gateway/catalog ainda falhou. Rode: .\scripts\docker-compose-wsl.ps1 logs --tail 80 catalog-api orders-api gateway"
 }
-
-Write-Step "Subindo fronts sem encerrar processos de outras aplicações"
+Write-Step "Subindo fronts sem encerrar processos de outras aplicacoes"
 Set-ApiBaseUrl ("{0}:5100" -f $AccessBaseUrl)
 
-$storefrontReady = Start-ComposeFront "Storefront" "storefront" (Join-Path $Root "apps\storefront") 8080 $AccessBaseUrl
-$adminReady = Start-ComposeFront "Admin" "admin" (Join-Path $Root "apps\admin") 8081 $AccessBaseUrl
+$storefrontReady = $false
+$adminReady = $false
+if ($LegacyFronts) {
+    $wslIp = Get-WslHostIp
+    if ($wslIp -and $AccessBaseUrl -eq "http://localhost") {
+        Ensure-LocalProxy 8080 $wslIp 8080
+        Ensure-LocalProxy 8081 $wslIp 8081
+    }
+    & $ComposeScript --profile legacy-fronts up --detach storefront admin | Out-Null
+    $storefrontReady = Wait-Http ("{0}:8080/" -f $AccessBaseUrl) 45
+    $adminReady = Wait-Http ("{0}:8081/" -f $AccessBaseUrl) 45
+} else {
+    Write-Ok "Fronts legados 8080/8081 nao iniciados (use -LegacyFronts se precisar)."
+}
 
 if (-not (Test-PortOpen 3000)) {
     $arg = '/c cd /d "' + $Root + '" & npm run dev'
     Start-Process -FilePath "cmd.exe" -ArgumentList $arg -WindowStyle Minimized
+    $nextReady = Wait-Http "http://localhost:3000/login" 120
+} else {
+    $nextReady = Wait-Http "http://localhost:3000/login" 10
+    if (-not $nextReady) {
+        Write-Warn "Porta 3000 ocupada, mas /login nao respondeu; verifique o processo Next.js atual."
+    }
 }
-$nextReady = Wait-Http "http://localhost:3000/login" 90
 
 if (-not $NoBrowser) {
-    if ($storefrontReady) { Start-Process ("{0}:8080/" -f $AccessBaseUrl) }
-    if ($adminReady) { Start-Process ("{0}:8081/" -f $AccessBaseUrl) }
+    if ($LegacyFronts -and $storefrontReady) { Start-Process ("{0}:8080/" -f $AccessBaseUrl) }
+    if ($LegacyFronts -and $adminReady) { Start-Process ("{0}:8081/" -f $AccessBaseUrl) }
     if ($nextReady) { Start-Process "http://localhost:3000/login" }
 }
 
@@ -191,36 +279,43 @@ Write-Host "Servicos disponiveis:" -ForegroundColor Green
 if ($nextReady) {
     Write-Host "  Next.js      http://localhost:3000/"
     Write-Host "  Admin Wa     http://localhost:3000/login"
+    Write-Host "  Admin legado http://localhost:3000/admin/legado"
 } else {
     Write-Warn "Next.js nao iniciou; execute npm run dev em outro terminal."
 }
-if ($storefrontReady) {
-    Write-Host ("  Cardapio     {0}:8080/" -f $AccessBaseUrl)
-} else {
-    Write-Warn "Cardapio nao iniciou; confira se a porta 8080 esta livre."
-}
-if ($adminReady) {
-    Write-Host ("  Admin        {0}:8081/   (credenciais configuradas no .env)" -f $AccessBaseUrl)
-} else {
-    Write-Warn "Admin nao iniciou; confira se a porta 8081 esta livre."
+if ($LegacyFronts) {
+    if ($storefrontReady) {
+        Write-Host ("  Cardapio     {0}:8080/" -f $AccessBaseUrl)
+    } else {
+        Write-Warn "Cardapio nao iniciou; confira se a porta 8080 esta livre."
+    }
+    if ($adminReady) {
+        Write-Host ("  Admin        {0}:8081/   (credenciais configuradas no .env)" -f $AccessBaseUrl)
+    } else {
+        Write-Warn "Admin nao iniciou; confira se a porta 8081 esta livre."
+    }
 }
 Write-Host ("  Gateway API  {0}:5100/api/v1/health" -f $AccessBaseUrl)
 Write-Host ""
-Write-Host "  OpçõesFuturas (opcionais, sob demanda - fora do stack padrão):" -ForegroundColor Cyan
-Write-Host "    RabbitMQ UI  http://localhost:15672/  (guest / guest)"
-Write-Host "    Jaeger       http://localhost:16686/"
-Write-Host "    Subir: wsl -d Ubuntu --cd /mnt/d/wadelivery -- docker compose -f docker-compose.future-options.yml up -d"
+if ($LegacyFronts) {
+  Write-Host ""
+  Write-Host "  Opcoes futuras (opcionais):" -ForegroundColor Cyan
+  Write-Host "    RabbitMQ UI  http://localhost:15672/"
+  Write-Host "    Jaeger       http://localhost:16686/"
+  Write-Host "    Subir: wsl -d Ubuntu --cd /mnt/d/wadelivery -- docker compose -f docker-compose.future-options.yml up -d"
+}
 try {
-    $lan = Get-NetIPAddress -AddressFamily IPv4 |
-        Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' } |
-        Select-Object -ExpandProperty IPAddress -First 1
-    if ($lan) {
-        Write-Host ""
-        Write-Host "Na rede (celular):" -ForegroundColor Cyan
-        Write-Host "  Cardapio     http://${lan}:8080/"
-        Write-Host "  Admin        http://${lan}:8081/"
-        Write-Host "  (API usa automaticamente http://${lan}:5100 - libere as portas no Firewall)"
-    }
+  $lan = Get-NetIPAddress -AddressFamily IPv4 |
+    Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' } |
+    Select-Object -ExpandProperty IPAddress -First 1
+  if ($lan) {
+    Write-Host ""
+    Write-Host "Na rede (celular):" -ForegroundColor Cyan
+    if ($LegacyFronts -and $storefrontReady) { Write-Host "  Cardapio     http://${lan}:8080/" }
+    if ($LegacyFronts -and $adminReady) { Write-Host "  Admin        http://${lan}:8081/" }
+    Write-Host "  Admin Wa     http://${lan}:3000/login"
+    Write-Host "  (API usa automaticamente http://${lan}:5100 - libere as portas no Firewall)"
+  }
 } catch { }
 Write-Host ""
 Write-Host "Para encerrar:  .\scripts\dev-down.ps1   ou   npm run dev:down"

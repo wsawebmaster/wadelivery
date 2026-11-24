@@ -21,7 +21,7 @@ export function isApexHost(host: string): boolean {
 
 /**
  * Resolve o slug do tenant a partir do Host:
- * 1) casamento exato em KNOWN_TENANT_HOSTS (suporta multi-label, ex. gota.acai.wadelivery.com.br);
+ * 1) casamento exato em KNOWN_TENANT_HOSTS (suporta multi-label, ex. minha.loja.wadelivery.com.br);
  * 2) fallback: 1º rótulo de *.wadelivery.com.br (nomedaloja.wadelivery.com.br);
  * 3) apex/desconhecido → null (nenhum tenant).
  * Slugs reservados nunca são resolvidos.

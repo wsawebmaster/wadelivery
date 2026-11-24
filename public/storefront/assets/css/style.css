@@ -3003,6 +3003,61 @@ body.install-bar-visible.cart-bar-visible .order-track-fab {
     margin: 4px 0;
 }
 
+/* Acompanhamento: chave Pix com botão de copiar (pedidos pagos via Pix). */
+.order-track-details .ot-pix {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 8px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1px dashed color-mix(in srgb, var(--tenant-primary, #1f6feb) 45%, white);
+    background: color-mix(in srgb, var(--tenant-primary, #1f6feb) 7%, white);
+}
+
+.order-track-details .ot-pix-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 160px;
+}
+
+.order-track-details .ot-pix-label {
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.order-track-details .ot-pix-key {
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.order-track-details .ot-pix-copy {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--tenant-primary, #1f6feb);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.order-track-details .ot-pix-missing {
+    border-color: #f0b429;
+    background: #fff8e6;
+    color: #7a4b00;
+    font-size: 0.88rem;
+}
+
+.order-track-details .ot-pix-copy:focus-visible {
+    outline: 2px solid var(--tenant-primary, #1f6feb);
+    outline-offset: 2px;
+}
+
 .order-track-details .ot-row > span:first-child {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -3312,3 +3367,750 @@ body.tenant-button-square .menu-item {
 body.tenant-button-pill button {
     border-radius: 999px;
 }
+
+/* ── Modelos de card escolhidos no painel (Loja → Aparência) ───────────────── */
+
+/* Vitrine: foto de ponta a ponta no topo e preço em selo na cor da loja. */
+body.tenant-card-vitrine .menu-item {
+    padding: 0 0 14px;
+    overflow: hidden;
+    text-align: left;
+}
+body.tenant-card-vitrine .menu-item .item-image {
+    order: 1;
+    width: 100%;
+    height: 160px;
+    margin: 0 0 12px;
+    border-radius: 0;
+    object-fit: cover;
+}
+body.tenant-card-vitrine .menu-item .item-body {
+    order: 2;
+    align-items: flex-start;
+    padding: 0 14px;
+}
+body.tenant-card-vitrine .menu-item .item-price {
+    order: 3;
+    align-self: flex-start;
+    margin: 10px 14px 0;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--tenant-primary, #1f6feb);
+    color: #fff;
+    max-width: calc(100% - 28px);
+    box-sizing: border-box;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: keep-all;
+}
+body.tenant-themed.tenant-card-vitrine .menu-item .item-price {
+    color: #fff;
+}
+body.tenant-card-vitrine .menu-item .quantity-controls {
+    order: 4;
+    justify-content: flex-start;
+    margin: 12px 14px 0;
+}
+
+/* Minimalista: lista com texto à esquerda, miniatura à direita e linhas divisórias. */
+body.tenant-card-minimal #menu .category-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+}
+body.tenant-card-minimal .menu-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "body img"
+        "price img"
+        "controls img";
+    column-gap: 14px;
+    row-gap: 6px;
+    align-items: start;
+    min-height: 0;
+    height: auto;
+    padding: 14px 4px;
+    text-align: left;
+    background: transparent;
+    box-shadow: none;
+    border: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 0;
+}
+body.tenant-themed.tenant-card-minimal .menu-item {
+    background: transparent;
+    border-bottom-color: color-mix(in srgb, var(--tenant-text, #2c3e50) 14%, transparent);
+}
+body.tenant-card-minimal .menu-item:hover {
+    transform: none;
+    box-shadow: none;
+}
+body.tenant-card-minimal .menu-item .item-image {
+    grid-area: img;
+    align-self: center;
+    width: 96px;
+    height: 96px;
+    margin: 0;
+    border-radius: 10px;
+    object-fit: cover;
+}
+body.tenant-card-minimal .menu-item .item-body {
+    grid-area: body;
+    align-items: flex-start;
+    margin: 0;
+}
+body.tenant-card-minimal .menu-item .item-price {
+    grid-area: price;
+    margin: 0;
+    padding: 0;
+}
+body.tenant-card-minimal .menu-item .quantity-controls {
+    grid-area: controls;
+    justify-content: flex-start;
+    margin: 4px 0 0;
+}
+
+/* Destaque: faixa lateral na cor da loja e preço em pílula. */
+body.tenant-card-highlight #menu .category-page {
+    grid-template-columns: minmax(0, 1fr);
+}
+body.tenant-card-highlight .menu-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "img body price"
+        "img body controls";
+    column-gap: 14px;
+    row-gap: 8px;
+    align-items: center;
+    min-height: 0;
+    height: auto;
+    padding: 12px 14px 12px 16px;
+    text-align: left;
+    border-left: 6px solid var(--tenant-primary, #1f6feb);
+}
+body.tenant-card-highlight .menu-item .item-image {
+    grid-area: img;
+    width: 80px;
+    height: 80px;
+    margin: 0;
+    border-radius: 12px;
+    object-fit: cover;
+}
+body.tenant-card-highlight .menu-item .item-body {
+    grid-area: body;
+    align-items: flex-start;
+    margin: 0;
+}
+body.tenant-card-highlight .menu-item .item-price {
+    grid-area: price;
+    justify-self: end;
+    margin: 0;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--tenant-primary, #1f6feb) 14%, white);
+    color: var(--tenant-primary, #1f6feb);
+    white-space: nowrap;
+}
+body.tenant-card-highlight .menu-item .quantity-controls {
+    grid-area: controls;
+    justify-self: end;
+    margin: 0;
+}
+@media (max-width: 480px) {
+    body.tenant-card-highlight .menu-item {
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+            "img body"
+            "img price"
+            "img controls";
+    }
+    body.tenant-card-highlight .menu-item .item-price,
+    body.tenant-card-highlight .menu-item .quantity-controls {
+        justify-self: start;
+    }
+}
+
+/* Moderno: foto 16:10 com zoom suave, descrição em 2 linhas e rodapé com preço +
+   botão de adicionar; no celular vira horizontal com a foto à direita. */
+body.tenant-card-modern #menu .category-page {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+body.tenant-card-modern .menu-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "img img"
+        "body body"
+        "price controls";
+    align-items: center;
+    min-height: 0;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+    text-align: left;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--tenant-primary, #1f6feb) 16%, transparent);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18);
+}
+body.tenant-card-modern .menu-item:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--tenant-primary, #1f6feb) 45%, transparent);
+}
+body.tenant-card-modern .menu-item .item-image {
+    grid-area: img;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 10;
+    margin: 0;
+    border-radius: 0;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+}
+body.tenant-card-modern .menu-item:hover .item-image:not(.item-image-placeholder) {
+    transform: scale(1.05);
+}
+body.tenant-card-modern .menu-item .item-body {
+    grid-area: body;
+    align-self: start;
+    align-items: flex-start;
+    margin: 0;
+    padding: 14px 16px 12px;
+}
+body.tenant-card-modern .menu-item .item-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+body.tenant-card-modern .menu-item .item-price {
+    grid-area: price;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 10px 0 14px 16px;
+    border-top: 1px solid color-mix(in srgb, var(--tenant-text, #2c3e50) 10%, transparent);
+    font-size: 1.15rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+body.tenant-card-modern .menu-item .quantity-controls {
+    grid-area: controls;
+    align-self: stretch;
+    margin: 0;
+    padding: 10px 16px 14px 12px;
+    border-top: 1px solid color-mix(in srgb, var(--tenant-text, #2c3e50) 10%, transparent);
+}
+body.tenant-card-modern .menu-item .quantity-controls button.plus {
+    padding: 8px 14px;
+    border-radius: 12px;
+    background: var(--tenant-primary, #1f6feb);
+    font-weight: 700;
+}
+body.tenant-card-modern .menu-item .quantity-controls button.minus {
+    border-radius: 12px;
+}
+@media (max-width: 540px) {
+    body.tenant-card-modern #menu .category-page {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
+    /* Celular: texto à esquerda (nome, preço, botão) e foto à direita, estilo iFood. */
+    body.tenant-card-modern .menu-item {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "body img"
+            "price img"
+            "controls img";
+        align-items: start;
+    }
+    body.tenant-card-modern .menu-item .item-image {
+        width: 104px;
+        height: 100%;
+        min-height: 104px;
+        aspect-ratio: auto;
+    }
+    body.tenant-card-modern .menu-item .item-body {
+        padding: 12px 12px 6px 14px;
+    }
+    body.tenant-card-modern .menu-item .item-price {
+        padding: 8px 12px 0 14px;
+    }
+    body.tenant-card-modern .menu-item .quantity-controls {
+        justify-content: flex-start;
+        padding: 8px 12px 12px 10px;
+        border-top: 0;
+    }
+}
+
+/* ── Horário de funcionamento: selo no cabeçalho e aviso ─────────────────── */
+.store-hours-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #14532d;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.4;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+.store-hours-pill[hidden] { display: none !important; }
+.store-hours-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+    animation: store-hours-pulse 2s ease-out infinite;
+}
+.store-hours-pill[data-state="closing"],
+.store-hours-pill[data-state="break"] { color: #92400e; }
+.store-hours-pill[data-state="closing"] .store-hours-dot,
+.store-hours-pill[data-state="break"] .store-hours-dot { background: #f59e0b; box-shadow: none; animation: none; }
+.store-hours-pill[data-state="closed"],
+.store-hours-pill[data-state="paused"] { color: #991b1b; }
+.store-hours-pill[data-state="closed"] .store-hours-dot,
+.store-hours-pill[data-state="paused"] .store-hours-dot { background: #ef4444; box-shadow: none; animation: none; }
+@keyframes store-hours-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+    70% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+@media (max-width: 420px) {
+    .store-hours-pill { font-size: 0.66rem; padding: 2px 8px; }
+}
+.store-closed-banner strong { display: block; }
+.store-closed-banner .store-closed-sub {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    opacity: 0.9;
+}
+.store-closed-banner.is-closing {
+    background: #fff7ed;
+    color: #9a3412;
+    border-bottom-color: #fed7aa;
+}
+
+/* ── Cards: interação e animação (lojas com tema; Fabin mantém o visual original) ── */
+body.tenant-themed .menu-item {
+    overflow: hidden;
+    /* A entrada (fade-in-up) não pode "congelar" o transform depois de terminar; senão o hover não sobe o card. */
+    animation-fill-mode: backwards;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+body.tenant-themed .menu-item .item-name {
+    transition: color 0.2s ease;
+}
+body.tenant-themed .menu-item .item-image:not(.item-image-placeholder) {
+    transition: transform 0.3s ease;
+}
+@media (hover: hover) {
+    body.tenant-themed:not(.tenant-card-minimal) .menu-item:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 18px 34px -10px rgba(0, 0, 0, 0.25);
+        border-color: color-mix(in srgb, var(--tenant-primary, #1f6feb) 45%, transparent);
+    }
+    body.tenant-themed .menu-item:hover .item-name {
+        color: var(--tenant-primary, #1f6feb);
+    }
+    body.tenant-themed .menu-item:hover .item-image:not(.item-image-placeholder) {
+        transform: scale(1.05);
+    }
+}
+body.tenant-themed .menu-item .quantity-controls button {
+    transition: transform 0.12s ease, background-color 0.15s ease, filter 0.15s ease;
+}
+body.tenant-themed .menu-item .quantity-controls button:active {
+    transform: scale(0.95);
+}
+@media (prefers-reduced-motion: reduce) {
+    body.tenant-themed .menu-item,
+    body.tenant-themed .menu-item .item-image,
+    body.tenant-themed .menu-item .quantity-controls button { transition: none; animation: none; }
+    body.tenant-themed:not(.tenant-card-minimal) .menu-item:hover,
+    body.tenant-themed .menu-item:hover .item-image:not(.item-image-placeholder) { transform: none; box-shadow: none; }
+    .store-hours-dot { animation: none; }
+}
+
+/* Moderno (igual ao modelo): rótulo "Valor" acima do preço e botão "+ Adicionar"
+   enquanto o item não está no carrinho; depois vira o controle − n +. */
+body.tenant-card-modern .menu-item .item-price {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+}
+body.tenant-card-modern .menu-item .item-price::before {
+    content: 'Valor';
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--tenant-text, #2c3e50) 55%, transparent);
+}
+body.tenant-card-modern .menu-item:not(.added) .quantity-controls button.plus::after {
+    content: ' Adicionar';
+    font-size: 0.85rem;
+}
+
+/* Selo de horário: quando não cabe ao lado do nome, desce para a linha de baixo (centralizado). */
+.barra-topo-brand {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 4px;
+}
+.barra-topo-brand h3 { white-space: nowrap; }
+.barra-topo-brand .store-hours-pill { order: 3; margin-inline: auto; }
+
+/* Troco rápido (pagamento em dinheiro) */
+.troco-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 4px 0 10px;
+}
+.troco-chips button {
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+.troco-chips button:active:not(:disabled) { transform: scale(0.96); }
+.troco-chips button.is-active {
+    border-color: var(--tenant-primary, #1f6feb);
+    background: color-mix(in srgb, var(--tenant-primary, #1f6feb) 12%, white);
+    color: var(--tenant-primary, #1f6feb);
+    font-weight: 800;
+}
+.troco-chips button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+/* Selos de destaque dos produtos (canto da foto) */
+.menu-item .item-badge,
+.store-hero-product .item-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+.item-badge--gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1c1917; }
+.item-badge--fire { background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; }
+.item-badge--green { background: linear-gradient(135deg, #4ade80, #16a34a); color: #052e16; }
+/* Foto à direita (Minimalista e Moderno no celular) ou sem foto: selo à direita, sem cobrir o nome. */
+body.tenant-card-minimal .menu-item .item-badge,
+body.tenant-card-compact .menu-item .item-badge,
+body.tenant-no-photo .menu-item .item-badge {
+    left: auto;
+    right: 10px;
+}
+body.tenant-card-minimal .menu-item.added .item-badge,
+body.tenant-card-compact .menu-item.added .item-badge,
+body.tenant-no-photo .menu-item.added .item-badge { right: 40px; }
+@media (max-width: 540px) {
+    body.tenant-card-modern .menu-item .item-badge { left: auto; right: 8px; top: 8px; font-size: 0.65rem; padding: 3px 7px; }
+}
+
+/* ── Destaque no topo (painel → Loja → Aparência) ─────────────────────── */
+.store-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    align-items: center;
+    margin: 12px 16px 4px;
+    padding: 18px;
+    border-radius: 20px;
+    background:
+        radial-gradient(circle at 85% 0%, color-mix(in srgb, var(--tenant-primary, #1f6feb) 18%, transparent), transparent 55%),
+        var(--tenant-secondary, #fff);
+    color: var(--tenant-text, #2c3e50);
+    border: 1px solid color-mix(in srgb, var(--tenant-primary, #1f6feb) 18%, transparent);
+    box-shadow: 0 10px 25px -12px rgba(0, 0, 0, 0.25);
+    animation: fade-in-up 0.45s ease-out backwards;
+}
+.store-hero[hidden] { display: none !important; }
+@media (min-width: 760px) {
+    .store-hero.has-product { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+}
+.store-hero-title {
+    margin: 0 0 6px;
+    font-size: clamp(1.3rem, 4.5vw, 2rem);
+    font-weight: 900;
+    line-height: 1.15;
+    color: var(--tenant-primary, #1f6feb);
+}
+.store-hero-subtitle {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    opacity: 0.85;
+}
+.store-hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.store-hero-chips span {
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--tenant-text, #2c3e50) 6%, transparent);
+    font-size: 0.8rem;
+}
+.store-hero-product {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 16px;
+    background: var(--tenant-background, #f3f4f6);
+    border: 1px solid color-mix(in srgb, var(--tenant-primary, #1f6feb) 22%, transparent);
+}
+.store-hero-media { aspect-ratio: 16 / 10; overflow: hidden; }
+.store-hero-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+}
+@media (hover: hover) {
+    .store-hero-product:hover .store-hero-media img { transform: scale(1.05); }
+}
+.store-hero-product .item-badge { position: absolute; top: 10px; left: 10px; }
+.store-hero-product-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px 14px;
+}
+.store-hero-product-name { font-size: 1.02rem; }
+.store-hero-product-desc {
+    margin: 4px 0 0;
+    font-size: 0.82rem;
+    opacity: 0.8;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.store-hero-product-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.store-hero-price {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: var(--tenant-primary, #1f6feb);
+    white-space: nowrap;
+}
+.store-hero-add {
+    padding: 9px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--tenant-primary, #1f6feb);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.12s ease;
+}
+.store-hero-add:hover { filter: brightness(1.08); }
+.store-hero-add:active { transform: scale(0.95); }
+@media (prefers-reduced-motion: reduce) {
+    .store-hero { animation: none; }
+    .store-hero-media img { transition: none; }
+}
+
+/* ── Tema escuro escolhido pelo cliente (html[data-theme="dark"], só lojas com tema) ── */
+.color-scheme-toggle .icon-sun { display: none; }
+html[data-theme="dark"] .color-scheme-toggle .icon-sun { display: block; }
+html[data-theme="dark"] .color-scheme-toggle .icon-moon { display: none; }
+.color-scheme-toggle[hidden] { display: none !important; }
+
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="dark"] body.tenant-themed {
+    --tenant-background: #12100e;
+    --tenant-secondary: #1c1916;
+    --tenant-text: #f5f5f4;
+    --cor-texto: #f5f5f4;
+    --dm-surface: #1c1916;
+    --dm-surface-2: #25211d;
+    --dm-border: rgba(255, 255, 255, 0.09);
+    --dm-muted: #a8a29e;
+    background-color: #12100e;
+    color: #f5f5f4;
+}
+/* Superfícies (fundo + borda + texto) */
+html[data-theme="dark"] body.tenant-themed :is(
+    .modal-content, .bottom-menu, .product-search-panel, .order-track-modal-content, .ot-modal-head,
+    .ot-modal-actions, .order-track-details, .address-card, .address-form-section, .fulfillment-option,
+    .payment-extra, .cart-order-total, .endereco-info, .custom-option, .cart-custom-inline, .repeat-order-summary,
+    .street-results, .bairro-list, .pix-pay-now, .store-inactive-card, .mesas-gate-card, .dine-in-banner,
+    .fulfillment-section, .install-app-bar-btn
+) {
+    background: var(--dm-surface);
+    color: #f5f5f4;
+    border-color: var(--dm-border);
+}
+html[data-theme="dark"] body.tenant-themed :is(
+    .categories-wrapper, .category-btn, .menu-nav-arrow, .secondary-btn, .close-button, .option-choice-btn,
+    .option-choice-secondary, .custom-toggle-btn, .cep-mode-tab, .residence-type-option, .pix-timing-option,
+    .street-result-btn, .address-type-pill, .address-default-pill, .cart-total-details-btn, .troco-chips button,
+    .menu-item .item-image-placeholder, .quantity-controls button.minus, .ot-step-label, .order-id-line, .menu-drag-hint
+) {
+    background: var(--dm-surface-2);
+    color: #e7e5e4;
+    border-color: var(--dm-border);
+}
+html[data-theme="dark"] body.tenant-themed :is(.input-field, input[type="text"], input[type="tel"], input[type="search"], input[type="email"], select, textarea) {
+    background: #12100e;
+    color: #f5f5f4;
+    border-color: rgba(255, 255, 255, 0.16);
+}
+html[data-theme="dark"] body.tenant-themed ::placeholder { color: #78716c; }
+/* Selecionados / ativos continuam destacados na cor da loja */
+html[data-theme="dark"] body.tenant-themed :is(
+    .fulfillment-option.is-selected, .address-card.selected, .cep-mode-tab.active, .custom-option:has(input:checked),
+    .residence-type-option:has(input:checked), .troco-chips button.is-active
+) {
+    background: color-mix(in srgb, var(--tenant-primary) 22%, #1c1916);
+    border-color: var(--tenant-primary);
+    color: #fff;
+}
+html[data-theme="dark"] body.tenant-themed .category-btn.active { background: var(--tenant-primary); color: #fff; }
+/* Cards */
+html[data-theme="dark"] body.tenant-themed .menu-item {
+    background: var(--dm-surface);
+    border-color: var(--dm-border);
+    box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.7);
+}
+html[data-theme="dark"] body.tenant-themed.tenant-card-minimal .menu-item { background: transparent; }
+html[data-theme="dark"] body.tenant-themed .menu-item.added {
+    background: color-mix(in srgb, #22c55e 12%, #1c1916);
+    border-color: rgba(34, 197, 94, 0.35);
+}
+html[data-theme="dark"] body.tenant-themed .menu-item .item-description { color: var(--dm-muted); }
+html[data-theme="dark"] body.tenant-themed .menu-item .item-image:not(.item-image-placeholder) { background: #26211c; }
+/* Avisos e textos secundários */
+html[data-theme="dark"] body.tenant-themed .store-closed-banner { background: #3b2a06; color: #fde68a; border-bottom-color: #5c4310; }
+html[data-theme="dark"] body.tenant-themed .store-closed-banner.is-closing { background: #3a1d0a; color: #fdba74; border-bottom-color: #5a2d12; }
+html[data-theme="dark"] body.tenant-themed :is(.muted, .field-hint, small) { color: var(--dm-muted); }
+html[data-theme="dark"] body.tenant-themed .store-hero-chips span { background: rgba(255, 255, 255, 0.07); }
+html[data-theme="dark"] body.tenant-themed .store-hours-pill { background: rgba(18, 16, 14, 0.85); }
+html[data-theme="dark"] body.tenant-themed .store-hours-pill[data-state="open"] { color: #86efac; }
+html[data-theme="dark"] body.tenant-themed .store-hours-pill[data-state="closing"],
+html[data-theme="dark"] body.tenant-themed .store-hours-pill[data-state="break"] { color: #fcd34d; }
+html[data-theme="dark"] body.tenant-themed .store-hours-pill[data-state="closed"],
+html[data-theme="dark"] body.tenant-themed .store-hours-pill[data-state="paused"] { color: #fca5a5; }
+html[data-theme="dark"] body.tenant-themed .order-track-details .ot-pix { background: color-mix(in srgb, var(--tenant-primary) 14%, #1c1916); }
+html[data-theme="dark"] body.tenant-themed .order-track-details .ot-pix-missing { background: #3b2a06; color: #fde68a; }
+
+/* Selo em produto sem foto: reserva o topo do card em vez de cobrir o conteúdo. */
+.menu-item.has-badge.no-image { padding-top: 44px !important; }
+.store-hero-product.no-media .item-badge {
+    position: static;
+    align-self: flex-start;
+    margin: 12px 14px 0;
+}
+html[data-theme="dark"] body.tenant-themed .fulfillment-title {
+    color: color-mix(in srgb, var(--tenant-primary) 55%, white);
+}
+
+/* ── Rolagem vertical (lojas da plataforma; a Fabin mantém o carrossel) ──────── */
+.category-section-title { display: none; }
+body.menu-vertical #menu {
+    display: block;
+    height: auto;
+    overflow: visible;
+    scroll-snap-type: none;
+}
+body.menu-vertical #menu .category-page {
+    height: auto;
+    overflow: visible;
+    padding: 4px 16px 20px;
+    scroll-margin-top: calc(var(--header-height) + var(--categories-height) + 12px);
+}
+body.menu-vertical #menu .category-page[hidden] { display: none; }
+body.menu-vertical .category-section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    grid-column: 1 / -1;
+    margin: 10px 0 2px;
+    font-size: 1.2rem;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    color: var(--tenant-text, #2c3e50);
+}
+body.menu-vertical .category-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--tenant-primary, #1f6feb) 45%, transparent), transparent);
+}
+body.menu-vertical .menu-nav-arrow,
+body.menu-vertical .menu-drag-hint { display: none !important; }
+body.menu-vertical .menu-search-empty { margin: 32px 16px; text-align: center; }
+body.menu-vertical.cart-bar-visible #menu { padding-bottom: calc(var(--bottom-bar-height) + 16px); }
+body.menu-vertical.cart-bar-visible #menu .category-page { padding-bottom: 20px; }
+/* Abas de categoria fixas, com fundo translúcido */
+body.menu-vertical .categories-wrapper {
+    margin: 0;
+    padding: 0 12px;
+    background: color-mix(in srgb, var(--tenant-background, #f3f4f6) 88%, transparent);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+body.menu-vertical .categories-wrapper.is-stuck {
+    box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.35);
+}
+html[data-theme="dark"] body.menu-vertical .categories-wrapper {
+    background: color-mix(in srgb, #12100e 88%, transparent);
+}
+@media (min-width: 900px) {
+    body.menu-vertical #menu,
+    body.menu-vertical .store-hero { max-width: 1180px; margin-inline: auto; }
+    body.menu-vertical .store-hero { margin-top: 16px; }
+}
+/* A última seção ocupa ao menos uma tela: qualquer categoria pode chegar ao topo ao tocar na aba. */
+body.menu-vertical #menu .category-page:last-of-type {
+    min-height: calc(100vh - var(--header-height) - var(--categories-height) - 24px);
+    min-height: calc(100dvh - var(--header-height) - var(--categories-height) - 24px);
+}
+/* Telas largas: a grade preenche colunas (2 colunas fixas deixavam os cards largos demais). */
+@media (min-width: 900px) {
+    body.menu-vertical.tenant-layout-grid:not(.tenant-card-minimal):not(.tenant-card-highlight) #menu .category-page {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+}
+
+/* Cardápio pré-renderizado pelo servidor (/{slug}): visível até o app assumir a página. */
+#menu .ssr-menu { display: block; flex: 0 0 100%; height: auto; overflow: visible; padding: 8px 16px; }
+#menu .ssr-menu .category-section-title { display: block; margin: 12px 0 8px; font-size: 1.15rem; }
+#menu .ssr-menu .menu-item { min-height: 0; margin-bottom: 10px; text-align: left; animation: none; }

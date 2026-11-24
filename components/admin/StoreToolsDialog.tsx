@@ -5,9 +5,13 @@ import {
   compareStoreTools,
   createStoreToolsBackup,
   fetchStoreToolsStatus,
+  previewStoreOrdersFromRemote,
   syncStoreFromRemote,
+  syncStoreOrdersFromRemote,
   type StoreToolsBackupResult,
   type StoreToolsCompareReport,
+  type StoreToolsOrdersPreview,
+  type StoreToolsOrdersSyncReport,
   type StoreToolsStatus,
   type StoreToolsSyncReport,
 } from '@/lib/admin-api'
@@ -18,11 +22,13 @@ interface StoreToolsDialogProps {
   onClose: () => void
 }
 
-type ToolsAction = 'compare' | 'backup' | 'preview' | 'apply'
+type ToolsAction = 'compare' | 'backup' | 'preview' | 'apply' | 'orders-preview' | 'orders-apply'
 type ToolsResult =
   | { kind: 'compare'; value: StoreToolsCompareReport }
   | { kind: 'backup'; value: StoreToolsBackupResult }
   | { kind: 'sync'; value: StoreToolsSyncReport }
+  | { kind: 'orders-preview'; value: StoreToolsOrdersPreview }
+  | { kind: 'orders-sync'; value: StoreToolsOrdersSyncReport }
 
 function formatDateTime(value?: string | null) {
   if (!value) return 'nenhum'
@@ -194,6 +200,51 @@ function SyncResult({ result }: { result: StoreToolsSyncReport }) {
   )
 }
 
+function OrdersPreviewResult({ result }: { result: StoreToolsOrdersPreview }) {
+  return (
+    <div className="space-y-2">
+      <h4 className="font-semibold">Simulação de pedidos remotos</h4>
+      {result.error && <p className="text-sm text-[var(--error)]">{result.error}</p>}
+      <p className="text-xs text-[var(--text-muted)]">
+        Modo {result.mode === 'admin' ? 'admin' : 'público'} · {result.totalRemote} pedidos remotos
+      </p>
+      <ul className="space-y-1 text-xs text-[var(--text-muted)]">
+        <li>Novos: {result.ordersToCreate}</li>
+        <li>Já existentes (serão substituídos ao aplicar): {result.ordersToReplace}</li>
+        <li>Iguais: {result.ordersEqual}</li>
+      </ul>
+      {result.sampleNewOrderIds.length > 0 && (
+        <p className="text-xs text-[var(--text-muted)]">
+          Exemplos novos: {result.sampleNewOrderIds.join(', ')}
+        </p>
+      )}
+      {result.warnings.map((warning, index) => (
+        <p key={`${warning}-${index}`} className="text-xs text-[var(--text-muted)]">{warning}</p>
+      ))}
+    </div>
+  )
+}
+
+function OrdersSyncResult({ result }: { result: StoreToolsOrdersSyncReport }) {
+  return (
+    <div className="space-y-2">
+      <h4 className={`font-semibold ${result.dryRun ? '' : 'text-green-400'}`}>
+        {result.dryRun ? 'Simulação de pedidos concluída' : 'Download de pedidos concluído'}
+      </h4>
+      {result.error && <p className="text-sm text-[var(--error)]">{result.error}</p>}
+      <ul className="space-y-1 text-xs text-[var(--text-muted)]">
+        <li>Criados: {result.ordersCreated}</li>
+        <li>Substituídos: {result.ordersReplaced}</li>
+        <li>Iguais: {result.ordersEqual}</li>
+        <li>Falhas: {result.ordersFailed}</li>
+      </ul>
+      {result.warnings.map((warning, index) => (
+        <p key={`${warning}-${index}`} className="text-xs text-[var(--text-muted)]">{warning}</p>
+      ))}
+    </div>
+  )
+}
+
 export default function StoreToolsDialog({
   storeId,
   storeName,
@@ -208,6 +259,7 @@ export default function StoreToolsDialog({
   const [result, setResult] = useState<ToolsResult | null>(null)
   const [skipDelete, setSkipDelete] = useState(true)
   const [confirmSync, setConfirmSync] = useState(false)
+  const [confirmOrdersSync, setConfirmOrdersSync] = useState(false)
 
   const refreshStatus = useCallback(async () => {
     setStatusLoading(true)
@@ -251,6 +303,11 @@ export default function StoreToolsDialog({
       } else if (nextAction === 'backup') {
         setResult({ kind: 'backup', value: await createStoreToolsBackup(storeId) })
         void refreshStatus()
+      } else if (nextAction === 'orders-preview') {
+        setResult({ kind: 'orders-preview', value: await previewStoreOrdersFromRemote(storeId) })
+      } else if (nextAction === 'orders-apply') {
+        setResult({ kind: 'orders-sync', value: await syncStoreOrdersFromRemote(storeId, false) })
+        void refreshStatus()
       } else {
         setResult({
           kind: 'sync',
@@ -276,7 +333,7 @@ export default function StoreToolsDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="store-tools-title"
-        className="wa-card max-h-[92vh] w-full max-w-3xl overflow-y-auto p-4 shadow-2xl sm:p-6"
+        className="wa-card wa-dialog max-h-[92vh] w-full max-w-3xl overflow-y-auto shadow-2xl"
       >
         <header className="mb-4 flex items-start justify-between gap-4">
           <div>
@@ -339,6 +396,25 @@ export default function StoreToolsDialog({
           >
             Baixar do remoto (aplicar)
           </button>
+          <button
+            type="button"
+            className="wa-btn wa-btn-ghost"
+            disabled={action !== null || statusLoading}
+            onClick={() => void runAction('orders-preview')}
+          >
+            {action === 'orders-preview' ? 'Simulando pedidos…' : 'Baixar pedidos (simular)'}
+          </button>
+          <button
+            type="button"
+            className="wa-btn wa-btn-primary"
+            disabled={action !== null || statusLoading}
+            onClick={() => {
+              setActionError(null)
+              setConfirmOrdersSync(true)
+            }}
+          >
+            Baixar pedidos (aplicar)
+          </button>
         </div>
 
         <label className="mb-4 flex items-center gap-2 text-xs text-[var(--text-muted)]">
@@ -381,12 +457,41 @@ export default function StoreToolsDialog({
           </div>
         )}
 
+        {confirmOrdersSync && (
+          <div className="mb-4 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3" role="alert">
+            <p className="mb-3 text-sm">
+              Baixar pedidos do remoto para o local? Pedidos novos serão criados; pedidos existentes com mesmo ID serão substituídos pelo estado remoto. Nada será excluído.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="wa-btn wa-btn-primary"
+                onClick={() => {
+                  setConfirmOrdersSync(false)
+                  void runAction('orders-apply')
+                }}
+              >
+                Confirmar download de pedidos
+              </button>
+              <button
+                type="button"
+                className="wa-btn wa-btn-ghost"
+                onClick={() => setConfirmOrdersSync(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
         {actionError && <p className="wa-alert is-error mb-3" role="alert">{actionError}</p>}
         {result && (
           <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3" aria-live="polite">
             {result.kind === 'compare' && <CompareResult report={result.value} />}
             {result.kind === 'backup' && <BackupResult result={result.value} />}
             {result.kind === 'sync' && <SyncResult result={result.value} />}
+            {result.kind === 'orders-preview' && <OrdersPreviewResult result={result.value} />}
+            {result.kind === 'orders-sync' && <OrdersSyncResult result={result.value} />}
           </section>
         )}
       </section>

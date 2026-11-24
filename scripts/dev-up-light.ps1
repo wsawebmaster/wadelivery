@@ -1,4 +1,4 @@
-# Ambiente leve sem Docker: catalog-api (JSON) + gateway + storefront + admin
+﻿# Ambiente leve sem Docker: catalog-api (JSON) + gateway + storefront + admin
 #
 # Uso:
 #   .\scripts\dev-up-light.ps1

@@ -73,6 +73,13 @@
 <header class="barra__topo__md">
     <div class="barra-topo-brand">
         <h3>FABIN LANCHES</h3>
+        <span id="storeHoursPill" class="store-hours-pill" hidden role="status" aria-live="polite">
+            <span class="store-hours-dot" aria-hidden="true"></span><span class="store-hours-label"></span>
+        </span>
+        <button type="button" id="colorSchemeToggle" class="barra-pesquisa-toggle color-scheme-toggle" hidden title="Alternar tema claro/escuro" aria-label="Ativar tema escuro" aria-pressed="false">
+            <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </button>
         <button type="button" id="productSearchToggle" class="barra-pesquisa-toggle" title="Buscar produtos" aria-label="Buscar produtos" aria-expanded="false" aria-controls="productSearchPanel">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
         </button>
@@ -92,6 +99,8 @@
 </div>
 
 <div id="storeClosedBanner" class="store-closed-banner" hidden role="status"></div>
+
+<section id="storeHero" class="store-hero" hidden aria-label="Destaque da loja"></section>
 
 <div class="categories-wrapper">
     <nav class="categories" id="categoriesBar" tabindex="0" aria-label="Categorias do cardápio"></nav>
@@ -276,12 +285,23 @@
           </div>
 
           <div id="trocoWrap" class="payment-extra" hidden>
-              <label class="checkbox-label">
+              <p class="field-label">Precisa de troco?</p>
+              <div class="troco-chips" id="trocoChips" role="group" aria-label="Troco">
+                  <button type="button" data-troco="none">Sem troco</button>
+                  <button type="button" data-troco="50">Troco p/ R$ 50</button>
+                  <button type="button" data-troco="100">Troco p/ R$ 100</button>
+                  <button type="button" data-troco="200">Troco p/ R$ 200</button>
+                  <button type="button" data-troco="outro">Outro valor</button>
+              </div>
+              <!-- Base dos botões acima: validação, mensagem e pedido continuam usando estes campos. -->
+              <label class="checkbox-label" hidden>
                   <input type="checkbox" id="precisaTroco" />
                   Preciso de troco
               </label>
-              <label class="field-label" for="trocoInput">Troco para quanto?</label>
-              <input type="text" id="trocoInput" class="input-field" placeholder="Ex.: 50" inputmode="decimal" disabled />
+              <div id="trocoValueWrap" hidden>
+                  <label class="field-label" for="trocoInput">Troco para quanto?</label>
+                  <input type="text" id="trocoInput" class="input-field" placeholder="Ex.: 70" inputmode="decimal" disabled />
+              </div>
           </div>
 
           <div class="cart-order-total">
